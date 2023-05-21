@@ -1,0 +1,16 @@
+refresh_rate: 30 seconds
+appenders:
+  stdout:
+    kind: console
+    encoder:
+      pattern: "{h({l} {d(%Y-%m-%d %H:%M:%S)} {M} {f}#{L})} - {m}{n}"
+  file:
+    kind: file
+    path: "/home/chushi0/log/web-cronjob.log"
+    encoder:
+      pattern: "{l} {d(%Y-%m-%d %H:%M:%S)} {M} {f}#{L} - {m}{n}"
+root:
+  level: debug
+  appenders:
+    - stdout
+    - file

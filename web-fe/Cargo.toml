@@ -1,0 +1,28 @@
+[package]
+name = "web-fe"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+yew = { version = "0.20", features = ["csr"] }
+gloo-net = "0.2"
+gloo-timers = "0.2.6"
+serde = { version = "1.0", features = ["derive"] }
+web-sys = "0.3.62"
+wasm-bindgen-futures = "0.4"
+log = "0.4.6"
+wasm-logger = "0.2.0"
+yew-router = "0.17"
+anyhow = "1.0"
+time = { version = "0.3.21", features = ["serde", "formatting"] }
+
+[profile.release]
+opt-level = 'z'
+debug = 0
+debug-assertions = false
+strip = "debuginfo"
+overflow-checks = true
+lto = true
+panic = 'unwind'
+incremental = false
+rpath = false
