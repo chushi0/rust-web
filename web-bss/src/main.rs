@@ -5,7 +5,6 @@ use rocket::serde::json::Json;
 extern crate rocket;
 
 mod biz;
-pub(crate) mod dao;
 pub(crate) mod model;
 pub(crate) mod service;
 
