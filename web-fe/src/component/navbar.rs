@@ -20,11 +20,7 @@ pub fn NavBar(props: &NavBarProps) -> Html {
         },
         Item::Menu {
             title: "实验",
-            children: Rc::new(vec![Item::Item {
-                id: "experience/lifegame",
-                title: "生命游戏",
-                href: crate::Route::NotFound,
-            }]),
+            children: Rc::new(vec![]),
         },
     ];
 
