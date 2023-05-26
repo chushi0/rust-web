@@ -32,13 +32,9 @@ async fn create_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> 
         .map_err(room_error_status)?;
 
     let mut room = room.lock().await;
-    if let Some(public) = req.public {
-        if public {
-            room.set_public();
-        }
+    if req.public.unwrap_or(false) {
+        room.set_public();
     }
-
-    room.set_master_user_id(req.user_id);
 
     Ok(JoinRoomResponse {
         room_id: room.get_room_id(),

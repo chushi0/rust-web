@@ -31,33 +31,44 @@ pub struct RoomKey {
 pub struct Room {
     room_key: RoomKey,
 
+    /// 是否公开。
+    /// 如果一个房间被标记为公开，则可以被匹配到
     public: bool,
+    /// 房间内的玩家
     join_players: Vec<RoomPlayer>,
-    can_join_room: bool,
-    master_user_id: i64,
+    /// 标注是否允许玩家加入或退出。
+    /// 会在开始游戏时设置为true，并在游戏结束时设置为false
+    player_lock: bool,
 
+    // 具体的游戏房间（根据游戏不同而有不同实现）
     biz_room: Arc<Box<dyn BizRoom>>,
 }
 
 #[derive(Debug)]
 pub struct RoomPlayer {
+    /// 用户id
     user_id: i64,
+    // 是否已准备
     ready: bool,
+    // 是否断线（会在游戏结束时移出房间）
     lost_connection: bool,
 }
 
 #[async_trait]
 pub trait BizRoom: Send + Sync + Debug {
+    /// 游戏主逻辑
     async fn do_game_logic(&self, safe_room: SafeRoom);
 
+    /// 检查游戏人数是否满足开始条件
     async fn check_start(&self, player_count: usize) -> bool;
 
+    /// 游戏最大支持同时加入人数
     async fn max_player_count(&self) -> usize;
 }
 
 #[derive(Debug)]
 pub enum RoomError {
-    RoomNotSetJoinFlag,
+    RoomPlayerLock,
     RoomFull,
     RoomHasBeenJoin,
 }
@@ -84,8 +95,7 @@ pub async fn create_room(game_type: GameType) -> SafeRoom {
         room_key,
         public: false,
         join_players: vec![],
-        can_join_room: true,
-        master_user_id: 0,
+        player_lock: false,
         biz_room: Arc::new(create_biz_room(game_type)),
     };
 
@@ -121,8 +131,10 @@ pub async fn mate_room(game_type: GameType, user_id: i64) -> Result<SafeRoom, Ro
         let room = entry.1.clone();
         let mut room = room.lock().await;
 
-        if room.public && room.can_join_room {
-            room.join_room(entry.1.clone(), user_id).await?;
+        if room.public && room.can_join(user_id).await {
+            unsafe {
+                room.join_room_unchecked(entry.1.clone(), user_id).await;
+            }
             return Ok(entry.1.clone());
         }
     }
@@ -149,6 +161,9 @@ impl Room {
         self.room_key.room_id
     }
 
+    /// 释放房间，从全局房间中删除。
+    /// 在游戏结束后或所有玩家退出房间后，必须调用此函数释放，否则会造成内存泄漏。
+    /// 释放后，对象不应再次使用。
     pub async fn release(&mut self) {
         if self.room_key.room_id == -1 {
             return;
@@ -159,20 +174,56 @@ impl Room {
         self.room_key.room_id = -1;
     }
 
-    async fn join_room(&mut self, safe_room: SafeRoom, user_id: i64) -> Result<(), RoomError> {
-        if !self.can_join_room {
-            return Err(RoomError::RoomNotSetJoinFlag);
+    /// 判断玩家是否可以加入当前房间
+    async fn can_join(&self, user_id: i64) -> bool {
+        if self.player_lock {
+            return false;
         }
 
-        for id in &self.join_players {
-            if id.user_id == user_id {
-                return Err(RoomError::RoomHasBeenJoin);
-            }
+        if self
+            .join_players
+            .iter()
+            .any(|player| player.user_id == user_id)
+        {
+            return false;
+        }
+
+        if self.biz_room.max_player_count().await <= self.join_players.len() {
+            return false;
+        }
+
+        true
+    }
+
+    /// 玩家加入房间，如果无法加入房间则返回错误
+    async fn join_room(&mut self, safe_room: SafeRoom, user_id: i64) -> Result<(), RoomError> {
+        if self.player_lock {
+            return Err(RoomError::RoomPlayerLock);
+        }
+
+        if self
+            .join_players
+            .iter()
+            .any(|player| player.user_id == user_id)
+        {
+            return Err(RoomError::RoomHasBeenJoin);
         }
 
         if self.biz_room.max_player_count().await <= self.join_players.len() {
             return Err(RoomError::RoomFull);
         }
+
+        unsafe {
+            self.join_room_unchecked(safe_room, user_id).await;
+        }
+
+        Ok(())
+    }
+
+    /// 玩家加入房间，不检查是否满足加入条件。
+    /// 务必在调用此函数前调用 [`can_join`] 函数判断是否可以加入
+    async unsafe fn join_room_unchecked(&mut self, safe_room: SafeRoom, user_id: i64) {
+        debug_assert!(self.can_join(user_id).await);
 
         self.join_players.push(RoomPlayer {
             user_id,
@@ -185,11 +236,9 @@ impl Room {
         if self.join_players.iter().all(|player| player.ready)
             && self.biz_room.check_start(self.join_players.len()).await
         {
-            self.can_join_room = false;
+            self.player_lock = true;
             tokio::spawn(room_runner(self.biz_room.clone(), safe_room));
         }
-
-        Ok(())
     }
 
     async fn broadcast_user_change(&self) {
@@ -198,21 +247,32 @@ impl Room {
         todo!()
     }
 
+    /// 设置房间公开
     pub fn set_public(&mut self) {
         self.public = true;
     }
 
-    pub fn set_master_user_id(&mut self, user_id: i64) {
-        self.master_user_id = user_id;
+    /// 房主user_id
+    ///
+    /// 房主是房间内加入房间最早的玩家
+    pub fn master_user_id(&self) -> i64 {
+        match self.join_players.first() {
+            Some(player) => player.user_id,
+            None => 0,
+        }
     }
 }
 
+/// 房间主逻辑处理
 async fn room_runner(biz_room: Arc<Box<dyn BizRoom>>, safe_room: SafeRoom) {
     biz_room.do_game_logic(safe_room.clone()).await;
     let mut room = safe_room.lock().await;
-    room.can_join_room = true;
+    room.player_lock = false;
 
     room.join_players.retain(|player| !player.lost_connection);
+    room.join_players
+        .iter_mut()
+        .for_each(|player| player.ready = false);
 
     if room.join_players.is_empty() {
         room.release().await;
