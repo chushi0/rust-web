@@ -1,7 +1,7 @@
 use idl_gen::game_backend::*;
 use volo_grpc::{Code, Request, Response, Status};
 
-use crate::common::room::{self, RoomError};
+use crate::common::room;
 
 pub async fn handle(req: Request<JoinRoomRequest>) -> Result<Response<JoinRoomResponse>, Status> {
     let req = req.get_ref();
@@ -27,13 +27,11 @@ fn check_request(req: &JoinRoomRequest) -> Result<(), Status> {
 async fn create_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
     let room = room::create_room(req.game_type).await;
 
-    room::join_room(room.clone(), req.user_id)
-        .await
-        .map_err(room_error_status)?;
+    room::join_room(room.clone(), req.user_id).await?;
 
     let mut room = room.lock().await;
     if req.public.unwrap_or(false) {
-        room.set_public();
+        room.set_public().await;
     }
 
     Ok(JoinRoomResponse {
@@ -46,13 +44,15 @@ async fn join_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
         .room_id
         .ok_or_else(|| Status::new(Code::InvalidArgument, "missing room_id"))?;
 
+    if room_id < room::MIN_ROOM_ID || room_id > room::MAX_ROOM_ID {
+        return Err(Status::new(Code::OutOfRange, "room_id out of range"));
+    }
+
     let room = room::get_room(req.game_type, room_id)
         .await
         .ok_or_else(|| Status::new(Code::NotFound, "room not exist"))?;
 
-    room::join_room(room.clone(), req.user_id)
-        .await
-        .map_err(room_error_status)?;
+    room::join_room(room.clone(), req.user_id).await?;
 
     let room = room.lock().await;
 
@@ -62,21 +62,11 @@ async fn join_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
 }
 
 async fn mate_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
-    let room = room::mate_room(req.game_type, req.user_id)
-        .await
-        .map_err(room_error_status)?;
+    let room = room::mate_room(req.game_type, req.user_id).await?;
 
     let room = room.lock().await;
 
     Ok(JoinRoomResponse {
         room_id: room.get_room_id(),
     })
-}
-
-fn room_error_status(e: RoomError) -> Status {
-    match e {
-        RoomError::RoomHasBeenJoin => Status::new(Code::AlreadyExists, "RoomHasBeenJoin"),
-
-        _ => Status::new(Code::FailedPrecondition, format!("{e:?}")),
-    }
 }

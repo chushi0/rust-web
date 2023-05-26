@@ -17,4 +17,25 @@ impl idl_gen::game_backend::GameBackendService for S {
     ) -> Result<Response<JoinRoomResponse>, Status> {
         handler::join_room::handle(req).await
     }
+
+    async fn set_player_ready(
+        &self,
+        req: Request<SetPlayerReadyRequest>,
+    ) -> Result<Response<SetPlayerReadyResponse>, Status> {
+        handler::room_interactive::handle_set_player_ready(req).await
+    }
+
+    async fn set_room_public(
+        &self,
+        req: Request<SetRoomPublicRequest>,
+    ) -> Result<Response<SetRoomPublicResponse>, Status> {
+        handler::room_interactive::handle_set_room_public(req).await
+    }
+
+    async fn leave_room(
+        &self,
+        req: Request<LeaveRoomRequest>,
+    ) -> Result<Response<LeaveRoomResponse>, Status> {
+        handler::room_interactive::handle_leave_room(req).await
+    }
 }

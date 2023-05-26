@@ -19,6 +19,34 @@ message JoinRoomRequest {
 
 message JoinRoomResponse { int32 roomId = 1; }
 
+message SetPlayerReadyRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+  bool ready = 4;
+}
+
+message SetPlayerReadyResponse {}
+
+message SetRoomPublicRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+}
+
+message SetRoomPublicResponse {}
+
+message LeaveRoomRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+}
+
+message LeaveRoomResponse {}
+
 service GameBackendService {
   rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+  rpc SetPlayerReady(SetPlayerReadyRequest) returns (SetPlayerReadyResponse);
+  rpc SetRoomPublic(SetRoomPublicRequest) returns (SetRoomPublicResponse);
+  rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse);
 }

@@ -10,14 +10,15 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::vec;
 use tokio::sync::Mutex;
+use volo_grpc::{Code, Status};
 
 lazy_static::lazy_static! {
     static ref ROOMS: Mutex<HashMap<RoomKey, SafeRoom>> = Mutex::new(HashMap::new());
     static ref RNG: Mutex<ChaCha8Rng> = Mutex::new(ChaCha8Rng::seed_from_u64(SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_secs()));
 }
 
-const MAX_ROOM_ID: i32 = 1000000;
-const MIN_ROOM_ID: i32 = 100000;
+pub const MAX_ROOM_ID: i32 = 1000000;
+pub const MIN_ROOM_ID: i32 = 100000;
 
 pub type SafeRoom = Arc<Mutex<Room>>;
 
@@ -66,11 +67,12 @@ pub trait BizRoom: Send + Sync + Debug {
     async fn max_player_count(&self) -> usize;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum RoomError {
     RoomPlayerLock,
     RoomFull,
     RoomHasBeenJoin,
+    PlayerNotInRoom,
 }
 
 pub async fn create_room(game_type: GameType) -> SafeRoom {
@@ -150,6 +152,21 @@ pub async fn mate_room(game_type: GameType, user_id: i64) -> Result<SafeRoom, Ro
     Ok(safe_room)
 }
 
+pub async fn leave_room(safe_room: SafeRoom, user_id: i64) -> Result<(), RoomError> {
+    let mut room = safe_room.lock().await;
+    room.leave_room(user_id).await
+}
+
+pub async fn set_player_ready(
+    safe_room: SafeRoom,
+    user_id: i64,
+    ready: bool,
+) -> Result<(), RoomError> {
+    let room = safe_room.clone();
+    let mut room = room.lock().await;
+    room.set_player_ready(safe_room, user_id, ready).await
+}
+
 fn create_biz_room(game_type: GameType) -> Box<dyn BizRoom> {
     match game_type {
         GameType::Furuyoni => Box::new(crate::biz::furuyoni::room::Room::new()),
@@ -220,6 +237,29 @@ impl Room {
         Ok(())
     }
 
+    /// 离开房间。如果当前不能离开，或玩家不在房间内，返回错误。
+    async fn leave_room(&mut self, user_id: i64) -> Result<(), RoomError> {
+        if self.player_lock {
+            return Err(RoomError::RoomPlayerLock);
+        }
+
+        let player_count = self.join_players.len();
+        self.join_players.retain(|player| player.user_id == user_id);
+        // 没有删除任何玩家
+        if player_count == self.join_players.len() {
+            return Err(RoomError::PlayerNotInRoom);
+        }
+
+        self.broadcast_user_change().await;
+
+        // 没有玩家了，释放房间
+        if self.join_players.is_empty() {
+            self.release().await;
+        }
+
+        Ok(())
+    }
+
     /// 玩家加入房间，不检查是否满足加入条件。
     /// 务必在调用此函数前调用 [`can_join`] 函数判断是否可以加入
     async unsafe fn join_room_unchecked(&mut self, safe_room: SafeRoom, user_id: i64) {
@@ -233,6 +273,53 @@ impl Room {
 
         self.broadcast_user_change().await;
 
+        self.start_game_if_satisfy(safe_room).await;
+    }
+
+    async fn broadcast_user_change(&self) {
+        // TODO: call bss rpc to notify player change
+        // consume error if any error happened
+        // todo!()
+    }
+
+    fn get_player(&mut self, user_id: i64) -> Option<&mut RoomPlayer> {
+        self.join_players
+            .iter_mut()
+            .find(|player| player.user_id == user_id)
+    }
+
+    /// 设置玩家是否准备
+    async fn set_player_ready(
+        &mut self,
+        safe_room: SafeRoom,
+        user_id: i64,
+        ready: bool,
+    ) -> Result<(), RoomError> {
+        if self.player_lock {
+            return Err(RoomError::RoomPlayerLock);
+        }
+
+        let player = self.get_player(user_id);
+        let player = match player {
+            Some(player) => player,
+            None => return Err(RoomError::PlayerNotInRoom),
+        };
+
+        if player.ready == ready {
+            return Ok(());
+        }
+
+        player.ready = ready;
+        self.broadcast_user_change().await;
+
+        if ready {
+            self.start_game_if_satisfy(safe_room).await;
+        }
+
+        Ok(())
+    }
+
+    async fn start_game_if_satisfy(&mut self, safe_room: SafeRoom) {
         if self.join_players.iter().all(|player| player.ready)
             && self.biz_room.check_start(self.join_players.len()).await
         {
@@ -241,15 +328,14 @@ impl Room {
         }
     }
 
-    async fn broadcast_user_change(&self) {
-        // TODO: call bss rpc to notify player change
-        // consume error if any error happened
-        todo!()
-    }
-
     /// 设置房间公开
-    pub fn set_public(&mut self) {
+    pub async fn set_public(&mut self) {
+        if self.public {
+            return;
+        }
         self.public = true;
+
+        self.broadcast_user_change().await;
     }
 
     /// 房主user_id
@@ -260,6 +346,19 @@ impl Room {
             Some(player) => player.user_id,
             None => 0,
         }
+    }
+}
+
+impl From<RoomError> for Status {
+    fn from(value: RoomError) -> Self {
+        let code = match value {
+            RoomError::RoomPlayerLock => Code::FailedPrecondition,
+            RoomError::RoomFull => Code::FailedPrecondition,
+            RoomError::RoomHasBeenJoin => Code::AlreadyExists,
+            RoomError::PlayerNotInRoom => Code::NotFound,
+        };
+        let msg = format!("{value:?}");
+        Status::new(code, msg)
     }
 }
 
