@@ -1,0 +1,24 @@
+syntax = "proto3";
+package game_backend;
+
+enum GameType { FURUYONI = 0; }
+
+enum JoinRoomStrategy {
+  CREATE = 0;
+  JOIN = 1;
+  MATE = 2;
+}
+
+message JoinRoomRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  JoinRoomStrategy strategy = 3;
+  optional int32 room_id = 4; // 加入的房间号
+  optional bool public = 5; // 创建房间时，如果设置为true，则创建公开房间
+}
+
+message JoinRoomResponse { int32 roomId = 1; }
+
+service GameBackendService {
+  rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+}

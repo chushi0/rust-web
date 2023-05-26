@@ -1,0 +1,27 @@
+syntax = "proto3";
+package bss_websocket;
+
+message RoomPlayer {
+  int64 user_id = 1;
+  int32 index = 2;
+  bool ready = 3;
+  bool online = 4;
+  bool master = 5;
+}
+
+message SendRoomCommonChangeRequest {
+  repeated int64 user_ids = 1;
+  int32 room_id = 2;
+  repeated RoomPlayer room_players = 3;
+  bool public = 4;
+}
+
+message SendRoomCommonChangeResponse {
+  repeated int64 success_user_ids = 1;
+  repeated int64 failed_user_ids = 2;
+}
+
+service BssWebsocketService {
+  rpc SendRoomCommonChange(SendRoomCommonChangeRequest)
+      returns (SendRoomCommonChangeResponse);
+}
