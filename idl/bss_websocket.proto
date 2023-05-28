@@ -21,7 +21,20 @@ message SendRoomCommonChangeResponse {
   repeated int64 failed_user_ids = 2;
 }
 
+message SendGameEventRequest {
+  repeated int64 user_id = 1;
+  int32 room_id = 2;
+  string event_type = 3;
+  string event_payload = 4;
+}
+
+message SendGameEventResponse {
+  repeated int64 success_user_ids = 1;
+  repeated int64 failed_user_ids = 2;
+}
+
 service BssWebsocketService {
   rpc SendRoomCommonChange(SendRoomCommonChangeRequest)
       returns (SendRoomCommonChangeResponse);
+  rpc SendGameEvent(SendGameEventRequest) returns (SendGameEventResponse);
 }

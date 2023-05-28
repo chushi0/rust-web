@@ -1,15 +1,18 @@
 use anyhow::Result;
-use sqlx::{Connection, Sqlite, SqliteConnection};
+use sqlx::{Connection, Encode, Sqlite, SqliteConnection};
 
 pub mod event;
+pub mod furuyoni;
 
 pub enum RDS {
     Event,
+    Furuyoni,
 }
 
 fn rds_name(rds: RDS) -> &'static str {
     match rds {
         RDS::Event => "event",
+        RDS::Furuyoni => "furuyoni",
     }
 }
 

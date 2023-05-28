@@ -41,8 +41,11 @@ pub struct Room {
     /// 会在开始游戏时设置为true，并在游戏结束时设置为false
     player_lock: bool,
 
-    // 具体的游戏房间（根据游戏不同而有不同实现）
+    /// 具体的游戏房间（根据游戏不同而有不同实现）
     biz_room: Arc<Box<dyn BizRoom>>,
+
+    /// 随机数生成器
+    rng: ChaCha8Rng,
 }
 
 #[derive(Debug)]
@@ -93,12 +96,16 @@ pub async fn create_room(game_type: GameType) -> SafeRoom {
         }
     })();
 
+    let seed = Uniform::new(u64::MIN, u64::MAX).sample(&mut *rng);
+    let room_rng = ChaCha8Rng::seed_from_u64(seed);
+
     let room = Room {
         room_key,
         public: false,
         join_players: vec![],
         player_lock: false,
         biz_room: Arc::new(create_biz_room(game_type)),
+        rng: room_rng,
     };
 
     let room = Arc::new(Mutex::new(room));
@@ -288,6 +295,10 @@ impl Room {
             .find(|player| player.user_id == user_id)
     }
 
+    pub fn players(&self) -> &Vec<RoomPlayer> {
+        &self.join_players
+    }
+
     /// 设置玩家是否准备
     async fn set_player_ready(
         &mut self,
@@ -346,6 +357,21 @@ impl Room {
             Some(player) => player.user_id,
             None => 0,
         }
+    }
+
+    pub fn random(&mut self, min: i32, max: i32) -> i32 {
+        Uniform::new(min, max).sample(&mut self.rng)
+    }
+
+    pub fn new_rng(&mut self) -> ChaCha8Rng {
+        let seed = Uniform::new(u64::MIN, u64::MAX).sample(&mut self.rng);
+        ChaCha8Rng::seed_from_u64(seed)
+    }
+}
+
+impl RoomPlayer {
+    pub fn get_user_id(&self) -> i64 {
+        self.user_id
     }
 }
 

@@ -12,7 +12,10 @@ impl Room {
 
 #[async_trait]
 impl BizRoom for Room {
-    async fn do_game_logic(&self, safe_room: SafeRoom) {}
+    async fn do_game_logic(&self, safe_room: SafeRoom) {
+        let mut game = super::game::Game::create(safe_room.clone()).await;
+        game.run().await;
+    }
 
     async fn check_start(&self, player_count: usize) -> bool {
         player_count == 2

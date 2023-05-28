@@ -7,3 +7,11 @@ entries:
       path: ../idl/game_backend.proto
       includes:
       - ../idl
+    - source: local
+      path: ../idl/bss_websocket.proto
+      includes:
+      - ../idl
+    - source: local
+      path: ../idl/game_data/furuyoni.proto
+      includes:
+      - ../idl
