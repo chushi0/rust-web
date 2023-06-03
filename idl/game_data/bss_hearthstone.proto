@@ -1,0 +1,121 @@
+syntax = "proto3";
+package game.bss.hearthstone;
+
+enum Position {
+  Undefined = 0;
+  Front = 1;
+  Back = 2;
+}
+
+// 游戏开始随机分组事件
+message RandomGroupEvent {
+  repeated int32 group_index_1 = 1;
+  repeated int32 group_index_2 = 2;
+}
+
+// 玩家选择位置
+message SelectPositionAction { Position position = 1; }
+
+// 玩家选择位置事件
+message PlayerSelectPositionEvent {
+  int32 player_index = 1;
+  Position position = 2;
+}
+
+// 卡牌
+message Card { int64 card_id = 1; }
+
+// 抽取起始卡牌
+message DrawPrepareCardEvent { repeated Card cards = 1; }
+
+// 更换起始卡牌
+message ReplacePrepareCardAction { repeated int32 card_index = 1; }
+
+// 抽卡
+message DrawCardEvent { repeated Card cards = 1; }
+
+// 我的回合，进行行动
+message MyTurnEvent {}
+
+// 进入玩家回合
+message PlayerTurnEvent { int32 mana_point = 1; }
+
+// 目标
+message Target {
+  optional int32 mission_id = 1;
+  optional int32 player = 2;
+}
+
+// 玩家使用卡
+message PlayerUseCardAction {
+  int32 card_index = 1;
+  optional Target target = 2;
+  optional int32 summon_position = 3;
+}
+
+// 玩家使用卡事件
+message PlayerUseCardEvent { int32 card_index = 1; }
+
+// 随从入场事件
+message MissionEnterEvent {
+  int32 mission_id = 1;
+  int32 mission_type = 2;
+}
+
+// 随从离场事件
+message MissionRemoveEvent { int32 mission_id = 1; }
+
+// 特殊效果处理
+message SpecialEffectEvent { repeated SpecialEffect list = 1; }
+
+// 特殊效果
+message SpecialEffect {
+  string effect_name = 1;
+  bytes payload = 2;
+}
+
+// 伤害
+message DamageEffect {
+  Target target = 1;
+  int32 damage = 2;
+}
+
+// 抽牌
+message DrawCardEffect {
+  int32 player = 1;
+  repeated Card card = 2;
+  int32 card_count = 3;
+}
+
+// 战吼（随从的前置、后置并入此结构中）
+message BattlecryEvent {
+  Target target = 1;
+  repeated SpecialEffect effect = 2;
+}
+
+// 亡语
+message DeathrattleEvent {
+  Target target = 1;
+  repeated SpecialEffect effect = 2;
+}
+
+// 随从攻击
+message MissionAttackAction {
+  int32 mission_id = 1;
+  Target target = 2;
+}
+
+// 随从攻击事件
+message MissionAttackEvent {
+  int32 mission_id = 1;
+  Target target = 2;
+}
+
+// 英雄死亡
+message HeroDeathEvent { int32 player = 1; }
+
+// 游戏结束
+message GameEndEvent {
+  bool win = 1;
+  bool lost = 2;
+}
