@@ -22,6 +22,12 @@ message PlayerSelectPositionEvent {
   Position position = 2;
 }
 
+// 服务器决定位置
+message ServerDecidePlayerPositionEvent {
+  repeated int32 front_players = 1;
+  repeated int32 back_players = 2;
+}
+
 // 卡牌
 message Card { int64 card_id = 1; }
 
@@ -31,11 +37,14 @@ message DrawPrepareCardEvent { repeated Card cards = 1; }
 // 更换起始卡牌
 message ReplacePrepareCardAction { repeated int32 card_index = 1; }
 
-// 抽卡
-message DrawCardEvent { repeated Card cards = 1; }
-
 // 我的回合，进行行动
-message MyTurnEvent {}
+message MyTurnStartEvent {}
+
+// 我的回合行动已被服务器处理
+message MyTurnActionAcceptEvent {}
+
+// 我的回合结束，无法行动
+message MyTurnEndEvent {}
 
 // 进入玩家回合
 message PlayerTurnEvent { int32 mana_point = 1; }
@@ -85,6 +94,7 @@ message DrawCardEffect {
   int32 player = 1;
   repeated Card card = 2;
   int32 card_count = 3;
+  int32 overdraw_count = 4;
 }
 
 // 战吼（随从的前置、后置并入此结构中）
@@ -98,6 +108,9 @@ message DeathrattleEvent {
   Target target = 1;
   repeated SpecialEffect effect = 2;
 }
+
+// 交换前后场
+message SwapFrontBackEffect { repeated int32 players = 1; }
 
 // 随从攻击
 message MissionAttackAction {

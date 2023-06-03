@@ -5,4 +5,9 @@ mod gen {
     volo::include_service!("volo_gen.rs");
 }
 
+mod protos_gen {
+    include!(concat!(env!("OUT_DIR"), "/protos/mod.rs"));
+}
+
 pub use gen::volo_gen::*;
+pub use protos_gen::*;

@@ -14,6 +14,8 @@ anyhow = "1"
 async-trait = "0.1"
 futures = "0.3"
 tokio = { version = "1", features = ["full"]}
+protobuf = "3.2.0"
 
 [build-dependencies]
 volo-build = "*"
+protobuf-codegen = "3.2.0"
