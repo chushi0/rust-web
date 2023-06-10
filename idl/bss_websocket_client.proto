@@ -40,7 +40,8 @@ message ReconnectRoomRequest {
 
 message JoinRoomResponse {
   int32 code = 1;
-  int32 message = 2;
+  string message = 2;
+  optional int32 room_id = 3;
 }
 
 message RoomPlayerAction {
