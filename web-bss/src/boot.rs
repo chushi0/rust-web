@@ -33,7 +33,7 @@ pub fn init_websocket() -> tokio::task::JoinHandle<()> {
 
 pub fn init_rocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
-        let routes = routes![home_events];
+        let routes = routes![home_events, user_new];
         rocket::build()
             .mount("/api/", routes)
             .launch()
