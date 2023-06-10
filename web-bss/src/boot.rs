@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use crate::handler_api::*;
 use crate::handler_ws::*;
 use crate::rocket::futures::SinkExt;
@@ -8,8 +6,15 @@ use crate::ws::WsBiz;
 use crate::ws::WsCon;
 use crate::ws::WsMsg;
 use log::warn;
+use std::sync::Arc;
+use std::time::Duration;
+use std::time::SystemTime;
+use std::time::UNIX_EPOCH;
+use std::vec;
 use tokio::sync::mpsc::channel;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::RwLock;
+use tokio::time::sleep;
 use tokio::{
     io::{AsyncWriteExt, BufStream},
     net::{TcpListener, TcpStream},
@@ -57,7 +62,9 @@ async fn serve_websocket(stream: TcpStream) {
     };
 
     let (sender, mut receiver) = channel(16);
-    let mut biz = match query_websocket_client(&request, Arc::new(sender)) {
+    let ping = Arc::new(RwLock::new(0));
+
+    let mut biz = match query_websocket_client(&request, Arc::new(sender), ping.clone()) {
         Some(v) => v,
         None => {
             warn!("websocket no client: {request:?}");
@@ -84,9 +91,37 @@ async fn serve_websocket(stream: TcpStream) {
 
     tokio::spawn(async move {
         biz.on_open().await;
+        let mut ping_time = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or(Duration::default())
+            .as_millis();
+        let mut ping_data: u32 = 0;
+        let mut recv_response = false;
+        let _ = ws_stream
+            .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
+            .await;
+        let mut timeout_count = 0;
 
         loop {
             tokio::select! {
+                _ = sleep(Duration::from_secs(10)) => {
+                    if !recv_response {
+                        warn!("client not response in 10 secs");
+                        timeout_count += 1;
+                        if timeout_count > 10 {
+                            let _ = ws_stream.close(None, None).await;
+                        }
+                    }
+                    recv_response = false;
+                    ping_data += 1;
+                    ping_time = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap_or(Duration::default())
+                        .as_millis();
+                    let _ = ws_stream
+                        .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
+                        .await;
+                },
                 Some(msg) = receiver.recv() => {
                     match msg {
                         WsMsg::Text(msg) => {
@@ -115,7 +150,20 @@ async fn serve_websocket(stream: TcpStream) {
                                 } else if msg.is_binary() {
                                     biz.on_binary_message(msg.as_data()).await;
                                 } else if msg.is_ping() {
-                                    let _ = ws_stream.send(Message::pong(&[0u8; 0][0..0])).await;
+                                    let _ = ws_stream.send(Message::pong(msg.as_data().clone())).await;
+                                } else if msg.is_pong() {
+                                    let ping_data = ping_data.to_be_bytes();
+                                    let recv_data = msg.as_data();
+                                    if equals(&ping_data, recv_data) && !recv_response {
+                                        let cur_time = SystemTime::now()
+                                            .duration_since(UNIX_EPOCH)
+                                            .unwrap_or(Duration::default())
+                                            .as_millis();
+                                        let delay = cur_time - ping_time;
+                                        *ping.write().await = delay as u64;
+                                        recv_response = true;
+                                        timeout_count = 0;
+                                    }
                                 }
                             },
                             Err(_) => break,
@@ -133,13 +181,30 @@ async fn serve_websocket(stream: TcpStream) {
 fn query_websocket_client(
     request: &HttpRequest,
     sender: Arc<Sender<WsMsg>>,
+    ping: Arc<RwLock<u64>>,
 ) -> Option<Box<dyn WsBiz + Send>> {
     for i in 0..WEBSOCKET_BIZ_LIST.len() {
         let factory = &WEBSOCKET_BIZ_LIST[i];
-        if let Some(biz) = factory.create_if_match(&request, WsCon::from_sender(sender.clone())) {
+        if let Some(biz) =
+            factory.create_if_match(&request, WsCon::from_sender(sender.clone(), ping.clone()))
+        {
             return Some(biz);
         }
     }
 
     None
+}
+
+fn equals(a: &[u8], b: &[u8]) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+
+    for i in 0..a.len() {
+        if a[i] != b[i] {
+            return false;
+        }
+    }
+
+    true
 }

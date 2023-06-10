@@ -1,7 +1,7 @@
-use std::sync::Arc;
-
 use anyhow::Result;
+use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::RwLock;
 
 pub mod game;
 
@@ -26,6 +26,7 @@ pub trait WsBiz {
 
 pub struct WsCon {
     sender: Arc<Sender<WsMsg>>,
+    ping: Arc<RwLock<u64>>,
     close: bool,
 }
 
@@ -37,9 +38,10 @@ pub enum WsMsg {
 }
 
 impl WsCon {
-    pub fn from_sender(sender: Arc<Sender<WsMsg>>) -> WsCon {
+    pub fn from_sender(sender: Arc<Sender<WsMsg>>, ping: Arc<RwLock<u64>>) -> WsCon {
         WsCon {
-            sender: sender,
+            sender,
+            ping,
             close: false,
         }
     }
@@ -64,5 +66,9 @@ impl WsCon {
             self.close = true;
         }
         Ok(())
+    }
+
+    pub async fn get_ping(&mut self) -> u64 {
+        *self.ping.read().await
     }
 }
