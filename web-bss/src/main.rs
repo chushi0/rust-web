@@ -6,6 +6,7 @@ mod boot;
 mod handler_api;
 mod handler_ws;
 pub mod model;
+pub mod rpc;
 pub mod service;
 pub mod util;
 pub mod ws;
