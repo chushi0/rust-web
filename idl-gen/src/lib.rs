@@ -11,3 +11,26 @@ mod protos_gen {
 
 pub use gen::volo_gen::*;
 pub use protos_gen::*;
+
+#[test]
+fn encode() {
+    use protobuf::Message;
+
+    let mut req = protos_gen::bss_websocket_client::ClientLoginRequest::new();
+    req.account = "4dbe4f75-5951-4f5c-871c".to_string();
+    req.password = "90a4f623d167".to_string();
+    let mut pack = protos_gen::bss_websocket_client::BoxProtobufPayload::new();
+    pack.name = protos_gen::bss_websocket_client::ClientLoginRequest::NAME.to_string();
+    pack.payload = req.write_to_bytes().unwrap();
+    let msg = pack.write_to_bytes().unwrap();
+    let mut buf = String::new();
+    static CHARS: [char; 16] = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',
+    ];
+    for byte in msg {
+        buf.push(CHARS[(byte / 16) as usize]);
+        buf.push(CHARS[(byte % 16) as usize]);
+    }
+
+    println!("{buf}");
+}

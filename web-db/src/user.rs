@@ -57,3 +57,17 @@ pub async fn query_user(db: &mut super::Transaction<'_>, param: QueryUserParam) 
 
     Ok(event)
 }
+
+pub async fn update_user_login_time(db: &mut super::Transaction<'_>, rowid: i64) -> Result<()> {
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_secs() as i64;
+
+    sqlx::query("update user set last_login_time = ? where rowid = ?")
+        .bind(now)
+        .bind(rowid)
+        .execute(&mut db.tx)
+        .await?;
+
+    Ok(())
+}
