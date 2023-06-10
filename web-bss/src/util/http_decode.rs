@@ -5,6 +5,7 @@ use crypto::sha1::Sha1;
 use std::collections::HashMap;
 use tokio::io::{AsyncBufReadExt, AsyncRead, AsyncWrite, AsyncWriteExt, BufStream};
 
+#[derive(Debug)]
 pub struct HttpRequest {
     pub method: String,
     pub path: String,
@@ -87,7 +88,7 @@ pub async fn websocket_upgrade_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     }
 
     let connection = req.headers.get("Connection").ok_or(anyhow!("connection"))?;
-    if connection.len() == 0 || connection[0] != "upgrade" {
+    if connection.len() == 0 || connection[0] != "Upgrade" {
         return Err(anyhow!("connection"));
     }
 

@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 rocket = { version = "0.5.0-rc.3", features = ["json"] }
-tokio = "1.28.1"
+tokio = { version = "1.28.1", features = ["sync"]}
 anyhow = "1.0"
 log = "0.4.6"
 time = "0.3.21"
@@ -13,4 +13,5 @@ web-db = { path = "../web-db" }
 tokio-websockets = "0.3.2"
 rust-crypto = "0.2.36"
 base64 = "0.21.2"
+lazy_static = "1.4.0"
 

@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Result};
 use futures::TryStreamExt;
-use sqlx::{FromRow, Row};
+use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Character {
