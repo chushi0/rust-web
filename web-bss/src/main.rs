@@ -1,6 +1,5 @@
 use crate::model::Model;
 use crate::rocket::futures::SinkExt;
-use anyhow::Result;
 use log::warn;
 use rocket::serde::json::Json;
 use tokio::{
@@ -46,13 +45,7 @@ fn init_websocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
         let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
         while let Ok((stream, _)) = listener.accept().await {
-            let serve_result = serve_websocket(stream).await;
-            if serve_result.is_err() {
-                let _ = stream
-                    .write(b"HTTP/1.1 400 BadRequest\r\nConnection: reset\r\n\r\n")
-                    .await;
-                warn!("websocket stream error: {serve_result:?}")
-            }
+            serve_websocket(stream).await;
         }
     })
 }
@@ -68,10 +61,30 @@ fn init_rocket() -> tokio::task::JoinHandle<()> {
     })
 }
 
-async fn serve_websocket(stream: TcpStream) -> Result<()> {
+async fn serve_websocket(stream: TcpStream) {
     let mut buf_stream = BufStream::new(stream);
-    let request = util::http_decode::parse_http_request(&mut buf_stream).await?;
-    util::http_decode::websocket_upgrade_handshake(&mut buf_stream, &request).await?;
+    let request = match util::http_decode::parse_http_request(&mut buf_stream).await {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("websocket handshake error: {e}");
+            let _ = buf_stream
+                .write(b"HTTP/1.1 400 BadRequest\r\nConnection: reset\r\n\r\n")
+                .await;
+            let _ = buf_stream.flush().await;
+            return;
+        }
+    };
+    match util::http_decode::websocket_upgrade_handshake(&mut buf_stream, &request).await {
+        Ok(v) => v,
+        Err(e) => {
+            warn!("websocket handshake error: {e}");
+            let _ = buf_stream
+                .write(b"HTTP/1.1 400 BadRequest\r\nConnection: reset\r\n\r\n")
+                .await;
+            let _ = buf_stream.flush().await;
+            return;
+        }
+    }
     let mut ws_stream = ServerBuilder::new().serve(buf_stream);
 
     tokio::spawn(async move {
@@ -81,6 +94,4 @@ async fn serve_websocket(stream: TcpStream) -> Result<()> {
             }
         }
     });
-
-    Ok(())
 }
