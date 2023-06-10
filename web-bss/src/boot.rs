@@ -11,8 +11,8 @@ use std::time::Duration;
 use std::time::SystemTime;
 use std::time::UNIX_EPOCH;
 use std::vec;
-use tokio::sync::mpsc::channel;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::unbounded_channel;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
 use tokio::time::sleep;
 use tokio::{
@@ -61,7 +61,7 @@ async fn serve_websocket(stream: TcpStream) {
         }
     };
 
-    let (sender, mut receiver) = channel(16);
+    let (sender, mut receiver) = unbounded_channel();
     let ping = Arc::new(RwLock::new(0));
 
     let mut biz = match query_websocket_client(&request, Arc::new(sender), ping.clone()) {
@@ -180,7 +180,7 @@ async fn serve_websocket(stream: TcpStream) {
 
 fn query_websocket_client(
     request: &HttpRequest,
-    sender: Arc<Sender<WsMsg>>,
+    sender: Arc<UnboundedSender<WsMsg>>,
     ping: Arc<RwLock<u64>>,
 ) -> Option<Box<dyn WsBiz + Send>> {
     for i in 0..WEBSOCKET_BIZ_LIST.len() {

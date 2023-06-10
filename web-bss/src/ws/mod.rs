@@ -1,6 +1,6 @@
 use anyhow::Result;
 use std::sync::Arc;
-use tokio::sync::mpsc::Sender;
+use tokio::sync::mpsc::UnboundedSender;
 use tokio::sync::RwLock;
 
 pub mod game;
@@ -25,7 +25,7 @@ pub trait WsBiz {
 }
 
 pub struct WsCon {
-    sender: Arc<Sender<WsMsg>>,
+    sender: Arc<UnboundedSender<WsMsg>>,
     ping: Arc<RwLock<u64>>,
     close: bool,
 }
@@ -38,7 +38,7 @@ pub enum WsMsg {
 }
 
 impl WsCon {
-    pub fn from_sender(sender: Arc<Sender<WsMsg>>, ping: Arc<RwLock<u64>>) -> WsCon {
+    pub fn from_sender(sender: Arc<UnboundedSender<WsMsg>>, ping: Arc<RwLock<u64>>) -> WsCon {
         WsCon {
             sender,
             ping,
@@ -46,23 +46,23 @@ impl WsCon {
         }
     }
 
-    pub async fn send_text(&self, msg: String) -> Result<()> {
+    pub fn send_text(&self, msg: String) -> Result<()> {
         if !self.close {
-            self.sender.send(WsMsg::Text(msg)).await?;
+            self.sender.send(WsMsg::Text(msg))?;
         }
         Ok(())
     }
 
-    pub async fn send_binary(&self, msg: Vec<u8>) -> Result<()> {
+    pub fn send_binary(&self, msg: Vec<u8>) -> Result<()> {
         if !self.close {
-            self.sender.send(WsMsg::Binary(msg)).await?;
+            self.sender.send(WsMsg::Binary(msg))?;
         }
         Ok(())
     }
 
-    pub async fn close(&mut self) -> Result<()> {
+    pub fn close(&mut self) -> Result<()> {
         if !self.close {
-            self.sender.send(WsMsg::Close).await?;
+            self.sender.send(WsMsg::Close)?;
             self.close = true;
         }
         Ok(())

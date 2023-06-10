@@ -3,18 +3,19 @@ use anyhow::Result;
 use idl_gen::bss_websocket_client::{BoxProtobufPayload, ClientLoginRequest, ClientLoginResponse};
 use log::warn;
 use protobuf::Message;
+use std::sync::Arc;
 use web_db::user::{query_user, update_user_login_time, QueryUserParam, User};
 use web_db::{begin_tx, create_connection, RDS};
 
 pub struct GameBiz {
-    con: super::WsCon,
+    con: Arc<super::WsCon>,
     user: Option<User>,
 }
 
 impl GameBiz {
     pub fn create(con: super::WsCon) -> GameBiz {
         GameBiz {
-            con: con,
+            con: Arc::new(con),
             user: None,
         }
     }
@@ -50,7 +51,7 @@ impl GameBiz {
             payload.name = ClientLoginResponse::NAME.to_string();
             payload.payload = resp.write_to_bytes()?;
 
-            self.con.send_binary(payload.write_to_bytes()?).await?;
+            self.con.send_binary(payload.write_to_bytes()?)?;
         }
 
         Ok(())
