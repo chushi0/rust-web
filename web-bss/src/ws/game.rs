@@ -1,15 +1,31 @@
 use super::WsBiz;
+use crate::rpc;
 use anyhow::Result;
-use idl_gen::bss_websocket_client::{BoxProtobufPayload, ClientLoginRequest, ClientLoginResponse};
+use idl_gen::bss_websocket_client::*;
+use idl_gen::game_backend;
 use log::warn;
 use protobuf::Message;
+use std::collections::HashMap;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 use web_db::user::{query_user, update_user_login_time, QueryUserParam, User};
 use web_db::{begin_tx, create_connection, RDS};
 
 pub struct GameBiz {
     con: Arc<super::WsCon>,
     user: Option<User>,
+    room: Option<RoomKey>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct RoomKey {
+    user_id: i64,
+    game_type: i32,
+    room_id: i32,
+}
+
+lazy_static::lazy_static! {
+    static ref ROOMS: RwLock<HashMap<RoomKey, Arc<super::WsCon>>> = RwLock::new(HashMap::new());
 }
 
 impl GameBiz {
@@ -17,6 +33,7 @@ impl GameBiz {
         GameBiz {
             con: Arc::new(con),
             user: None,
+            room: None,
         }
     }
 }
@@ -29,7 +46,12 @@ impl WsBiz for GameBiz {
         }
     }
 
-    async fn on_close(&mut self) {}
+    async fn on_close(&mut self) {
+        if let Some(room) = &self.room {
+            let mut rooms = ROOMS.write().await;
+            rooms.remove(room);
+        }
+    }
 }
 
 impl GameBiz {
@@ -50,7 +72,54 @@ impl GameBiz {
             let mut payload = BoxProtobufPayload::new();
             payload.name = ClientLoginResponse::NAME.to_string();
             payload.payload = resp.write_to_bytes()?;
-
+            self.con.send_binary(payload.write_to_bytes()?)?;
+        } else if paylod.name == CreateRoomRequest::NAME {
+            let req = CreateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
+            let resp = match self.create_room(req).await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    warn!("error when handle create_room: {e}");
+                    let mut resp = JoinRoomResponse::new();
+                    resp.code = 500;
+                    resp.message = "internal error".to_string();
+                    resp
+                }
+            };
+            let mut payload = BoxProtobufPayload::new();
+            payload.name = JoinRoomResponse::NAME.to_string();
+            payload.payload = resp.write_to_bytes()?;
+            self.con.send_binary(payload.write_to_bytes()?)?;
+        } else if paylod.name == JoinRoomRequest::NAME {
+            let req = JoinRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
+            let resp = match self.join_room(req).await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    warn!("error when handle create_room: {e}");
+                    let mut resp = JoinRoomResponse::new();
+                    resp.code = 500;
+                    resp.message = "internal error".to_string();
+                    resp
+                }
+            };
+            let mut payload = BoxProtobufPayload::new();
+            payload.name = JoinRoomResponse::NAME.to_string();
+            payload.payload = resp.write_to_bytes()?;
+            self.con.send_binary(payload.write_to_bytes()?)?;
+        } else if paylod.name == MateRoomRequest::NAME {
+            let req = MateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
+            let resp = match self.mate_room(req).await {
+                Ok(resp) => resp,
+                Err(e) => {
+                    warn!("error when handle create_room: {e}");
+                    let mut resp = JoinRoomResponse::new();
+                    resp.code = 500;
+                    resp.message = "internal error".to_string();
+                    resp
+                }
+            };
+            let mut payload = BoxProtobufPayload::new();
+            payload.name = JoinRoomResponse::NAME.to_string();
+            payload.payload = resp.write_to_bytes()?;
             self.con.send_binary(payload.write_to_bytes()?)?;
         }
 
@@ -88,6 +157,154 @@ impl GameBiz {
 
         self.user = Some(user);
         let mut resp = ClientLoginResponse::new();
+        resp.code = 0;
+        resp.message = "success".to_string();
+        Ok(resp)
+    }
+
+    async fn create_room(&mut self, req: CreateRoomRequest) -> Result<JoinRoomResponse> {
+        let user = match &self.user {
+            Some(user) => user,
+            None => {
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 401;
+                resp.message = "not login".to_string();
+                return Ok(resp);
+            }
+        };
+
+        if self.room.is_some() {
+            let mut resp = JoinRoomResponse::new();
+            resp.code = 1001;
+            resp.message = "has join room".to_string();
+            return Ok(resp);
+        }
+
+        let mut rpc_req = game_backend::JoinRoomRequest::default();
+        rpc_req.user_id = user.rowid;
+        rpc_req.game_type = match game_backend::GameType::try_from(req.game_type) {
+            Ok(v) => v,
+            Err(_) => {
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 1002;
+                resp.message = "game not supported".to_string();
+                return Ok(resp);
+            }
+        };
+        rpc_req.strategy = game_backend::JoinRoomStrategy::Create;
+        rpc_req.public = Some(req.init_public);
+        let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
+
+        let room_key = RoomKey {
+            user_id: user.rowid,
+            game_type: req.game_type,
+            room_id: rpc_resp.room_id,
+        };
+        self.room = Some(room_key);
+        let mut rooms = ROOMS.write().await;
+        rooms.insert(room_key, self.con.clone());
+        drop(rooms);
+
+        let mut resp = JoinRoomResponse::new();
+        resp.code = 0;
+        resp.message = "success".to_string();
+        resp.room_id = Some(rpc_resp.room_id);
+        Ok(resp)
+    }
+
+    async fn join_room(&mut self, req: JoinRoomRequest) -> Result<JoinRoomResponse> {
+        let user = match &self.user {
+            Some(user) => user,
+            None => {
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 401;
+                resp.message = "not login".to_string();
+                return Ok(resp);
+            }
+        };
+
+        if self.room.is_some() {
+            let mut resp = JoinRoomResponse::new();
+            resp.code = 1001;
+            resp.message = "has join room".to_string();
+            return Ok(resp);
+        }
+
+        let mut rpc_req = game_backend::JoinRoomRequest::default();
+        rpc_req.user_id = user.rowid;
+        rpc_req.game_type = match game_backend::GameType::try_from(req.game_type) {
+            Ok(v) => v,
+            Err(_) => {
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 1002;
+                resp.message = "game not supported".to_string();
+                return Ok(resp);
+            }
+        };
+        rpc_req.strategy = game_backend::JoinRoomStrategy::Join;
+        rpc_req.room_id = Some(req.room_id);
+        let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
+
+        let room_key = RoomKey {
+            user_id: user.rowid,
+            game_type: req.game_type,
+            room_id: rpc_resp.room_id,
+        };
+        self.room = Some(room_key);
+        let mut rooms = ROOMS.write().await;
+        rooms.insert(room_key, self.con.clone());
+        drop(rooms);
+
+        let mut resp = JoinRoomResponse::new();
+        resp.code = 0;
+        resp.message = "success".to_string();
+        resp.room_id = Some(rpc_resp.room_id);
+        Ok(resp)
+    }
+
+    async fn mate_room(&mut self, req: MateRoomRequest) -> Result<JoinRoomResponse> {
+        let user = match &self.user {
+            Some(user) => user,
+            None => {
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 401;
+                resp.message = "not login".to_string();
+                return Ok(resp);
+            }
+        };
+
+        if self.room.is_some() {
+            let mut resp = JoinRoomResponse::new();
+            resp.code = 1001;
+            resp.message = "has join room".to_string();
+            return Ok(resp);
+        }
+
+        let mut rpc_req = game_backend::JoinRoomRequest::default();
+        rpc_req.user_id = user.rowid;
+        rpc_req.game_type = match game_backend::GameType::try_from(req.game_type) {
+            Ok(v) => v,
+            Err(_) => {
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 1002;
+                resp.message = "game not supported".to_string();
+                return Ok(resp);
+            }
+        };
+        rpc_req.strategy = game_backend::JoinRoomStrategy::Mate;
+        let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
+
+        let room_key = RoomKey {
+            user_id: user.rowid,
+            game_type: req.game_type,
+            room_id: rpc_resp.room_id,
+        };
+        self.room = Some(room_key);
+        let mut rooms = ROOMS.write().await;
+        rooms.insert(room_key, self.con.clone());
+        drop(rooms);
+
+        let mut resp = JoinRoomResponse::new();
         resp.code = 0;
         resp.message = "success".to_string();
         Ok(resp)

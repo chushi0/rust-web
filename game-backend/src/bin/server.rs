@@ -10,7 +10,7 @@ use game_backend::S;
 async fn main() {
     log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
 
-    let addr: SocketAddr = "[::]:8080".parse().unwrap();
+    let addr: SocketAddr = "127.0.0.1:13201".parse().unwrap();
     let addr = volo::net::Address::from(addr);
 
     Server::new()

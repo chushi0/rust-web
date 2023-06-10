@@ -177,6 +177,7 @@ pub async fn set_player_ready(
 fn create_biz_room(game_type: GameType) -> Box<dyn BizRoom> {
     match game_type {
         GameType::Furuyoni => Box::new(crate::biz::furuyoni::room::Room::new()),
+        GameType::Hearthstone => Box::new(crate::biz::hearthstone::room::Room::new()),
     }
 }
 
