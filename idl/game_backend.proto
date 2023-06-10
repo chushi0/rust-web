@@ -1,7 +1,10 @@
 syntax = "proto3";
 package game_backend;
 
-enum GameType { FURUYONI = 0; }
+enum GameType {
+  FURUYONI = 0;
+  HEARTHSTONE = 1;
+}
 
 enum JoinRoomStrategy {
   CREATE = 0;
