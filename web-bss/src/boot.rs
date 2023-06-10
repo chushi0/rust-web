@@ -6,6 +6,7 @@ use crate::ws::WsBiz;
 use crate::ws::WsCon;
 use crate::ws::WsMsg;
 use log::warn;
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -21,6 +22,26 @@ use tokio::{
 };
 use tokio_websockets::Message;
 use tokio_websockets::ServerBuilder;
+use volo_grpc::server::Server;
+use volo_grpc::server::ServiceBuilder;
+
+pub fn init_grpc() -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async {
+        let addr: SocketAddr = "127.0.0.1:13202".parse().unwrap();
+        let addr = volo::net::Address::from(addr);
+
+        Server::new()
+            .add_service(
+                ServiceBuilder::new(idl_gen::bss_websocket::BssWebsocketServiceServer::new(
+                    crate::handler_grpc::S,
+                ))
+                .build(),
+            )
+            .run(addr)
+            .await
+            .unwrap();
+    })
+}
 
 pub fn init_websocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
