@@ -19,7 +19,7 @@ use tokio_websockets::ServerBuilder;
 
 pub fn init_websocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
-        let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
+        let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
         while let Ok((stream, _)) = listener.accept().await {
             serve_websocket(stream).await;
         }
