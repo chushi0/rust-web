@@ -1,3 +1,4 @@
+use crate::biz::grpc;
 use idl_gen::bss_websocket::*;
 use volo_grpc::{Request, Response, Status};
 
@@ -9,12 +10,17 @@ impl idl_gen::bss_websocket::BssWebsocketService for S {
         &self,
         req: Request<SendRoomCommonChangeRequest>,
     ) -> Result<Response<SendRoomCommonChangeResponse>, Status> {
-        todo!()
+        let req = req.get_ref();
+
+        match grpc::send_room_common_change::handle(req).await {
+            Ok(resp) => Ok(Response::new(resp)),
+            Err(e) => Err(Status::internal(e.to_string())),
+        }
     }
 
     async fn send_game_event(
         &self,
-        req: Request<SendGameEventRequest>,
+        _req: Request<SendGameEventRequest>,
     ) -> Result<Response<SendGameEventResponse>, Status> {
         todo!()
     }

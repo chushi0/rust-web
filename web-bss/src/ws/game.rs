@@ -18,10 +18,10 @@ pub struct GameBiz {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-struct RoomKey {
-    user_id: i64,
-    game_type: i32,
-    room_id: i32,
+pub struct RoomKey {
+    pub user_id: i64,
+    pub game_type: i32,
+    pub room_id: i32,
 }
 
 lazy_static::lazy_static! {
@@ -308,5 +308,13 @@ impl GameBiz {
         resp.code = 0;
         resp.message = "success".to_string();
         Ok(resp)
+    }
+}
+
+pub async fn get_room_wscon(key: &RoomKey) -> Option<Arc<super::WsCon>> {
+    let rooms = ROOMS.read().await;
+    match rooms.get(key) {
+        Some(wscon) => Some(wscon.clone()),
+        None => None,
     }
 }
