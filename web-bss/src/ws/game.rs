@@ -1,5 +1,6 @@
 use super::WsBiz;
 use crate::rpc;
+use crate::util::protobuf::pack_message;
 use anyhow::Result;
 use idl_gen::bss_websocket_client::*;
 use idl_gen::game_backend;
@@ -59,68 +60,44 @@ impl GameBiz {
         let paylod = BoxProtobufPayload::parse_from_bytes(msg)?;
         if paylod.name == ClientLoginRequest::NAME {
             let req = ClientLoginRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = match self.client_login(req).await {
-                Ok(resp) => resp,
-                Err(e) => {
-                    warn!("error when handle client_login: {e}");
-                    let mut resp = ClientLoginResponse::new();
-                    resp.code = 500;
-                    resp.message = "internal error".to_string();
-                    resp
-                }
-            };
-            let mut payload = BoxProtobufPayload::new();
-            payload.name = ClientLoginResponse::NAME.to_string();
-            payload.payload = resp.write_to_bytes()?;
-            self.con.send_binary(payload.write_to_bytes()?)?;
+            let resp = self.client_login(req).await.unwrap_or_else(|e| {
+                warn!("error when handle client_login: {e}");
+                let mut resp = ClientLoginResponse::new();
+                resp.code = 500;
+                resp.message = "internal error".to_string();
+                resp
+            });
+            self.con.send_binary(pack_message(resp)?)?;
         } else if paylod.name == CreateRoomRequest::NAME {
             let req = CreateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = match self.create_room(req).await {
-                Ok(resp) => resp,
-                Err(e) => {
-                    warn!("error when handle create_room: {e}");
-                    let mut resp = JoinRoomResponse::new();
-                    resp.code = 500;
-                    resp.message = "internal error".to_string();
-                    resp
-                }
-            };
-            let mut payload = BoxProtobufPayload::new();
-            payload.name = JoinRoomResponse::NAME.to_string();
-            payload.payload = resp.write_to_bytes()?;
-            self.con.send_binary(payload.write_to_bytes()?)?;
+            let resp = self.create_room(req).await.unwrap_or_else(|e| {
+                warn!("error when handle create_room: {e}");
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 500;
+                resp.message = "internal error".to_string();
+                resp
+            });
+            self.con.send_binary(pack_message(resp)?)?;
         } else if paylod.name == JoinRoomRequest::NAME {
             let req = JoinRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = match self.join_room(req).await {
-                Ok(resp) => resp,
-                Err(e) => {
-                    warn!("error when handle create_room: {e}");
-                    let mut resp = JoinRoomResponse::new();
-                    resp.code = 500;
-                    resp.message = "internal error".to_string();
-                    resp
-                }
-            };
-            let mut payload = BoxProtobufPayload::new();
-            payload.name = JoinRoomResponse::NAME.to_string();
-            payload.payload = resp.write_to_bytes()?;
-            self.con.send_binary(payload.write_to_bytes()?)?;
+            let resp = self.join_room(req).await.unwrap_or_else(|e| {
+                warn!("error when handle create_room: {e}");
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 500;
+                resp.message = "internal error".to_string();
+                resp
+            });
+            self.con.send_binary(pack_message(resp)?)?;
         } else if paylod.name == MateRoomRequest::NAME {
             let req = MateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = match self.mate_room(req).await {
-                Ok(resp) => resp,
-                Err(e) => {
-                    warn!("error when handle create_room: {e}");
-                    let mut resp = JoinRoomResponse::new();
-                    resp.code = 500;
-                    resp.message = "internal error".to_string();
-                    resp
-                }
-            };
-            let mut payload = BoxProtobufPayload::new();
-            payload.name = JoinRoomResponse::NAME.to_string();
-            payload.payload = resp.write_to_bytes()?;
-            self.con.send_binary(payload.write_to_bytes()?)?;
+            let resp = self.mate_room(req).await.unwrap_or_else(|e| {
+                warn!("error when handle create_room: {e}");
+                let mut resp = JoinRoomResponse::new();
+                resp.code = 500;
+                resp.message = "internal error".to_string();
+                resp
+            });
+            self.con.send_binary(pack_message(resp)?)?;
         }
 
         Ok(())
