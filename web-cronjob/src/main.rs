@@ -6,6 +6,7 @@ pub mod biz;
 #[derive(Parser, Debug)]
 enum ProgramArgs {
     FetchGithubActivity,
+    RefreshMcAdvancement { path: String, lang: String },
 }
 
 #[tokio::main]
@@ -19,9 +20,11 @@ async fn main() {
     let arg = ProgramArgs::parse();
     log::info!("starting cronjob: {arg:?}");
     let result = match arg {
-        ProgramArgs::FetchGithubActivity => biz::fetch_github_activity::handle(),
-    }
-    .await;
+        ProgramArgs::FetchGithubActivity => biz::fetch_github_activity::handle().await,
+        ProgramArgs::RefreshMcAdvancement { path, lang } => {
+            biz::refresh_mc_advancement::handle(&path, &lang).await
+        }
+    };
 
     if let Err(e) = result {
         log::error!("execute cronjob fail: {e}")

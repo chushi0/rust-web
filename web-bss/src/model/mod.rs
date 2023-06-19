@@ -1,6 +1,7 @@
 use rocket::serde::Serialize;
 
 pub mod home;
+pub mod mc;
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(crate = "rocket::serde")]

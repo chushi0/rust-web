@@ -2,14 +2,16 @@ use anyhow::Result;
 use sqlx::{Connection, Sqlite, SqliteConnection};
 
 pub mod event;
-
+pub mod mc_config;
 pub enum RDS {
     Event,
+    McConfig,
 }
 
 fn rds_name(rds: RDS) -> &'static str {
     match rds {
         RDS::Event => "event",
+        RDS::McConfig => "mc-config",
     }
 }
 
