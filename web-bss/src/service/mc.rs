@@ -17,6 +17,13 @@ pub struct Advancement {
     pub done: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(untagged)]
+enum AdvancementFile {
+    Advancement(Advancement),
+    Number(i32),
+}
+
 pub async fn get_player_uuid(name: &str) -> Result<String> {
     let users: Vec<UserCache> = read_mc_file("usercache.json").await?;
     for user_cache in &users {
@@ -29,7 +36,19 @@ pub async fn get_player_uuid(name: &str) -> Result<String> {
 }
 
 pub async fn get_player_advancement(uuid: &str) -> Result<HashMap<String, Advancement>> {
-    Ok(read_mc_file(format!("world/advancements/{uuid}.json")).await?)
+    let file: HashMap<String, AdvancementFile> =
+        read_mc_file(format!("world/advancements/{uuid}.json")).await?;
+
+    let mut res = HashMap::new();
+    for (id, file) in file {
+        match file {
+            AdvancementFile::Advancement(v) => {
+                res.insert(id, v);
+            }
+            AdvancementFile::Number(_) => (),
+        };
+    }
+    Ok(res)
 }
 
 async fn read_mc_file<T, S>(path: S) -> Result<T>
