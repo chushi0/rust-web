@@ -8,6 +8,7 @@ pub struct S;
 pub mod biz;
 pub mod common;
 pub mod handler;
+pub mod rpc;
 
 #[volo::async_trait]
 impl idl_gen::game_backend::GameBackendService for S {
