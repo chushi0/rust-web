@@ -10,6 +10,8 @@ use yew_router::prelude::*;
 enum Route {
     #[at("/")]
     Home,
+    #[at("/console/mc/advancement")]
+    McAdvancement,
     #[not_found]
     #[at("/404")]
     NotFound,
@@ -19,6 +21,7 @@ fn switch(routes: Route) -> Html {
     match routes {
         Route::Home => html! { <HomePage /> },
         Route::NotFound => html! { <NotFoundPage /> },
+        Route::McAdvancement => html! { <McAdvancementPage /> },
     }
 }
 

@@ -5,12 +5,14 @@ pub mod event;
 pub mod furuyoni;
 pub mod hearthstone;
 pub mod user;
+pub mod mc_config;
 
 pub enum RDS {
     User,
     Event,
     Furuyoni,
     Hearthstone,
+    McConfig,
 }
 
 fn rds_name(rds: RDS) -> &'static str {
@@ -19,6 +21,7 @@ fn rds_name(rds: RDS) -> &'static str {
         RDS::Event => "event",
         RDS::Furuyoni => "furuyoni",
         RDS::Hearthstone => "hearthstone",
+        RDS::McConfig => "mc-config",
     }
 }
 

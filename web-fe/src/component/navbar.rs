@@ -18,9 +18,17 @@ pub fn NavBar(props: &NavBarProps) -> Html {
             title: "动态",
             href: crate::Route::Home,
         },
+        // Item::Menu {
+        //     title: "实验",
+        //     children: Rc::new(vec![]),
+        // },
         Item::Menu {
-            title: "实验",
-            children: Rc::new(vec![]),
+            title: "MC",
+            children: Rc::new(vec![Item::Item {
+                id: "mc-advancement",
+                title: "进度查看",
+                href: crate::Route::McAdvancement,
+            }]),
         },
     ];
 

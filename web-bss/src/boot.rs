@@ -54,7 +54,7 @@ pub fn init_websocket() -> tokio::task::JoinHandle<()> {
 
 pub fn init_rocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
-        let routes = routes![home_events, user_new];
+        let routes = routes![home_events, user_new, mc_globaldata_advancement, mc_playerdata_advancement];
         rocket::build()
             .mount("/api/", routes)
             .launch()
