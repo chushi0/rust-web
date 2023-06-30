@@ -8,7 +8,7 @@ use crate::{
 use gloo_net::{http::Request, Error};
 use std::{
     cell::RefCell,
-    collections::HashMap,
+    collections::{BTreeMap, HashMap},
     rc::{Rc, Weak},
     vec,
 };
@@ -134,7 +134,7 @@ pub fn AdvancementComponent(props: &AdvancementComponentProps) -> Html {
             let svg_height = width * 64 + 100;
 
             // 计算每个node的位置
-            let mut node_pos = HashMap::new();
+            let mut node_pos = BTreeMap::new();
             calc_node_position(node.clone(), &mut node_pos, 0, 0);
 
             let node_on_click = {
@@ -447,6 +447,14 @@ fn translate_global_data(
         }
     }
 
+    tree.roots.sort_by_cached_key(|node| {
+        node.upgrade()
+            .expect("should has strong refer")
+            .advancement
+            .id
+            .clone()
+    });
+
     Ok(tree)
 }
 
@@ -480,7 +488,7 @@ fn has_finish(
 
 fn calc_node_position(
     node: Rc<AdvancementConfigTreeNode>,
-    node_pos: &mut HashMap<String, (i32, i32)>,
+    node_pos: &mut BTreeMap<String, (i32, i32)>,
     height: i32,
     width: i32,
 ) -> i32 {
