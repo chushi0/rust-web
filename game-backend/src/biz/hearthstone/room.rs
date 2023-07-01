@@ -17,10 +17,10 @@ impl BizRoom for Room {
     }
 
     async fn check_start(&self, player_count: usize) -> bool {
-        player_count == 2
+        player_count == 4
     }
 
     async fn max_player_count(&self) -> usize {
-        2
+        4
     }
 }
