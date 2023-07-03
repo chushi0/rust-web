@@ -301,6 +301,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "datastructure"
+version = "0.1.0"
+
+[[package]]
 name = "derivative"
 version = "2.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -564,6 +568,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-trait",
+ "datastructure",
  "idl-gen",
  "lazy_static",
  "log",

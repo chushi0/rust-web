@@ -18,6 +18,7 @@ message JoinRoomRequest {
   JoinRoomStrategy strategy = 3;
   optional int32 room_id = 4; // 加入的房间号
   optional bool public = 5; // 创建房间时，如果设置为true，则创建公开房间
+  optional bytes extra_data = 6; // 加入房间携带的额外信息
 }
 
 message JoinRoomResponse { int32 roomId = 1; }

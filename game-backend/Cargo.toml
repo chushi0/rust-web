@@ -8,6 +8,7 @@ edition = "2021"
 [dependencies]
 idl-gen = { path = "../idl-gen" }
 web-db = { path = "../web-db" }
+datastructure = { path = "../datastructure" }
 
 volo = "*"
 volo-grpc = "*"

@@ -56,6 +56,8 @@ pub struct RoomPlayer {
     ready: bool,
     // 是否断线（会在游戏结束时移出房间）
     lost_connection: bool,
+    // 进入房间的附加信息（由具体游戏解析）
+    extra_data: Option<Vec<u8>>,
 }
 
 #[async_trait]
@@ -124,38 +126,48 @@ pub async fn get_room(game_type: GameType, room_id: i32) -> Option<SafeRoom> {
     }
 }
 
-pub async fn join_room(safe_room: SafeRoom, user_id: i64) -> Result<(), RoomError> {
+pub async fn join_room(
+    safe_room: SafeRoom,
+    user_id: i64,
+    extra_data: Option<Vec<u8>>,
+) -> Result<(), RoomError> {
     let room = safe_room.clone();
     let mut room = room.lock().await;
-    room.join_room(safe_room, user_id).await
+    room.join_room(safe_room, user_id, extra_data).await
 }
 
-pub async fn mate_room(game_type: GameType, user_id: i64) -> Result<SafeRoom, RoomError> {
-    let rooms = ROOMS.lock().await;
-    for entry in &*rooms {
-        if entry.0.game_type != game_type {
-            continue;
-        }
-
-        let room = entry.1.clone();
-        let mut room = room.lock().await;
-
-        if room.public && room.can_join(user_id).await {
-            unsafe {
-                room.join_room_unchecked(entry.1.clone(), user_id).await;
+pub async fn mate_room(
+    game_type: GameType,
+    user_id: i64,
+    extra_data: Option<Vec<u8>>,
+) -> Result<SafeRoom, RoomError> {
+    {
+        let rooms = ROOMS.lock().await;
+        for entry in &*rooms {
+            if entry.0.game_type != game_type {
+                continue;
             }
-            return Ok(entry.1.clone());
+
+            let room = entry.1.clone();
+            let mut room = room.lock().await;
+
+            if room.public && room.can_join(user_id).await {
+                unsafe {
+                    room.join_room_unchecked(entry.1.clone(), user_id, extra_data)
+                        .await;
+                }
+                return Ok(entry.1.clone());
+            }
         }
     }
-    // 需手动释放以避免 create_room 死锁
-    drop(rooms);
 
     let safe_room = create_room(game_type).await;
     let room = safe_room.clone();
     let mut room = room.lock().await;
     room.public = true;
 
-    room.join_room(safe_room.clone(), user_id).await?;
+    room.join_room(safe_room.clone(), user_id, extra_data)
+        .await?;
     Ok(safe_room)
 }
 
@@ -221,7 +233,12 @@ impl Room {
     }
 
     /// 玩家加入房间，如果无法加入房间则返回错误
-    async fn join_room(&mut self, safe_room: SafeRoom, user_id: i64) -> Result<(), RoomError> {
+    async fn join_room(
+        &mut self,
+        safe_room: SafeRoom,
+        user_id: i64,
+        extra_data: Option<Vec<u8>>,
+    ) -> Result<(), RoomError> {
         if self.player_lock {
             return Err(RoomError::RoomPlayerLock);
         }
@@ -239,7 +256,8 @@ impl Room {
         }
 
         unsafe {
-            self.join_room_unchecked(safe_room, user_id).await;
+            self.join_room_unchecked(safe_room, user_id, extra_data)
+                .await;
         }
 
         Ok(())
@@ -270,13 +288,19 @@ impl Room {
 
     /// 玩家加入房间，不检查是否满足加入条件。
     /// 务必在调用此函数前调用 [`can_join`] 函数判断是否可以加入
-    async unsafe fn join_room_unchecked(&mut self, safe_room: SafeRoom, user_id: i64) {
+    async unsafe fn join_room_unchecked(
+        &mut self,
+        safe_room: SafeRoom,
+        user_id: i64,
+        extra_data: Option<Vec<u8>>,
+    ) {
         debug_assert!(self.can_join(user_id).await);
 
         self.join_players.push(RoomPlayer {
             user_id,
             ready: false,
             lost_connection: false,
+            extra_data,
         });
 
         self.broadcast_user_change().await;
@@ -373,6 +397,10 @@ impl Room {
 impl RoomPlayer {
     pub fn get_user_id(&self) -> i64 {
         self.user_id
+    }
+
+    pub fn get_extra_data(&self) -> &Option<Vec<u8>> {
+        &self.extra_data
     }
 }
 

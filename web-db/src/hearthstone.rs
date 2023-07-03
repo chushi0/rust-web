@@ -159,7 +159,7 @@ pub enum Side {
 }
 
 pub async fn get_all_cards(db: &mut super::Transaction<'_>) -> Result<Vec<Card>> {
-    let mut iter = sqlx::query_as("select * from card").fetch(&mut db.tx);
+    let mut iter = sqlx::query_as("select rowid, * from card").fetch(&mut db.tx);
 
     let mut res = Vec::new();
     while let Some(row) = iter.try_next().await? {
@@ -167,4 +167,11 @@ pub async fn get_all_cards(db: &mut super::Transaction<'_>) -> Result<Vec<Card>>
     }
 
     Ok(res)
+}
+
+pub async fn get_card_by_code(db: &mut super::Transaction<'_>, code: &str) -> Result<Card> {
+    Ok(sqlx::query_as("select rowid, * from card where code = ?")
+        .bind(code)
+        .fetch_one(&mut db.tx)
+        .await?)
 }

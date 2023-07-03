@@ -27,7 +27,7 @@ fn check_request(req: &JoinRoomRequest) -> Result<(), Status> {
 async fn create_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
     let room = room::create_room(req.game_type).await;
 
-    room::join_room(room.clone(), req.user_id).await?;
+    room::join_room(room.clone(), req.user_id, clone_extra_data(&req.extra_data)).await?;
 
     let mut room = room.lock().await;
     if req.public.unwrap_or(false) {
@@ -52,7 +52,7 @@ async fn join_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
         .await
         .ok_or_else(|| Status::new(Code::NotFound, "room not exist"))?;
 
-    room::join_room(room.clone(), req.user_id).await?;
+    room::join_room(room.clone(), req.user_id, clone_extra_data(&req.extra_data)).await?;
 
     let room = room.lock().await;
 
@@ -62,11 +62,23 @@ async fn join_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
 }
 
 async fn mate_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
-    let room = room::mate_room(req.game_type, req.user_id).await?;
+    let room = room::mate_room(
+        req.game_type,
+        req.user_id,
+        clone_extra_data(&req.extra_data),
+    )
+    .await?;
 
     let room = room.lock().await;
 
     Ok(JoinRoomResponse {
         room_id: room.get_room_id(),
     })
+}
+
+fn clone_extra_data(extra_data: &Option<pilota::Bytes>) -> Option<Vec<u8>> {
+    match extra_data {
+        Some(data) => Some(data.to_vec()),
+        None => None,
+    }
 }

@@ -5,6 +5,7 @@ use web_db::hearthstone::SpecialCardInfo;
 use super::db_cache;
 
 // 阵营
+#[derive(Debug, PartialEq, Eq, Hash)]
 pub enum Camp {
     A,
     B,
@@ -74,6 +75,14 @@ pub struct Minion {
     buf_list: Vec<Buff>,
 }
 
+pub trait Damageable {
+    fn damage(&mut self, damage: i32);
+
+    fn heal(&mut self, heal: i32) {
+        self.damage(-heal);
+    }
+}
+
 impl Minion {
     pub fn get_atk(&self) -> i32 {
         if self.atk > 0 {
@@ -81,17 +90,6 @@ impl Minion {
         } else {
             0
         }
-    }
-
-    pub fn damage(&mut self, damage: i32) {
-        self.hp -= damage;
-        if self.hp > self.maxhp {
-            self.hp = self.maxhp;
-        }
-    }
-
-    pub fn heal(&mut self, heal: i32) {
-        self.damage(-heal);
     }
 
     pub fn buff(&mut self, buff: Buff) {
@@ -108,6 +106,15 @@ impl Minion {
         }
 
         self.buf_list.push(buff);
+    }
+}
+
+impl Damageable for Minion {
+    fn damage(&mut self, damage: i32) {
+        self.hp -= damage;
+        if self.hp > self.maxhp {
+            self.hp = self.maxhp;
+        }
     }
 }
 
