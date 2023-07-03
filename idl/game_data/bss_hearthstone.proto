@@ -7,6 +7,10 @@ enum Position {
   Back = 2;
 }
 
+message JoinRoomExtraData {
+  repeated string card_code = 1; // 牌库
+}
+
 // 游戏开始随机分组事件
 message RandomGroupEvent {
   repeated int32 group_index_1 = 1;

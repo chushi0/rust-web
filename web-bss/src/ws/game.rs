@@ -170,6 +170,7 @@ impl GameBiz {
         };
         rpc_req.strategy = game_backend::JoinRoomStrategy::Create;
         rpc_req.public = Some(req.init_public);
+        rpc_req.extra_data = clone_extra_data(req.extra_data);
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
@@ -220,6 +221,7 @@ impl GameBiz {
         };
         rpc_req.strategy = game_backend::JoinRoomStrategy::Join;
         rpc_req.room_id = Some(req.room_id);
+        rpc_req.extra_data = clone_extra_data(req.extra_data);
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
@@ -269,6 +271,7 @@ impl GameBiz {
             }
         };
         rpc_req.strategy = game_backend::JoinRoomStrategy::Mate;
+        rpc_req.extra_data = clone_extra_data(req.extra_data);
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
@@ -292,6 +295,13 @@ pub async fn get_room_wscon(key: &RoomKey) -> Option<Arc<super::WsCon>> {
     let rooms = ROOMS.read().await;
     match rooms.get(key) {
         Some(wscon) => Some(wscon.clone()),
+        None => None,
+    }
+}
+
+fn clone_extra_data(extra_data: Option<Vec<u8>>) -> Option<pilota::Bytes> {
+    match extra_data {
+        Some(data) => Some(pilota::Bytes::copy_from_slice(&data)),
         None => None,
     }
 }
