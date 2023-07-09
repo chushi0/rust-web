@@ -574,6 +574,7 @@ dependencies = [
  "log",
  "log4rs",
  "pilota",
+ "protobuf",
  "rand",
  "rand_chacha",
  "serde",

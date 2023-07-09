@@ -99,19 +99,21 @@ impl Game {
                 .camp = camp;
         }
         // 按照 0 2 1 3 顺序行动
-        let mut action_turn = Vec::with_capacity(5);
-        for id in vec![0, 2, 1, 3] {
-            action_turn.push(TurnAction::PlayerAction {
-                uid: player_ids[id],
-            });
-        }
-        action_turn.push(TurnAction::SwapFrontBack);
-        self.current_turn_action = CycleArrayVector::new(action_turn);
+        // let mut action_turn = Vec::with_capacity(5);
+        // for id in vec![0, 2, 1, 3] {
+        //     action_turn.push(TurnAction::PlayerAction {
+        //         uid: player_ids[id],
+        //     });
+        // }
+        // action_turn.push(TurnAction::SwapFrontBack);
+        // self.current_turn_action = CycleArrayVector::new(action_turn);
 
         // TODO: 下发分组信息
     }
 
-    async fn init_players(&mut self) {}
+    async fn init_players(&mut self) {
+        // TODO: 选择前后、起始手牌\
+    }
 
     async fn do_main_turn(&mut self) {}
 
