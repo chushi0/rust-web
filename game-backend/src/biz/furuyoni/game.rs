@@ -6,7 +6,6 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[derive(Debug)]
 pub struct Game {
     room: SafeRoom,
     players: HashMap<i64, SafePlayer>,

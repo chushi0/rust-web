@@ -67,7 +67,7 @@ impl Game {
         }
     }
 
-    pub async fn run(&mut self) {
+    pub async fn run(mut self) {
         // 全局初始化，分组、下发游戏开局信息
         self.global_init().await;
         // 玩家选择前后场，决定起始手牌
