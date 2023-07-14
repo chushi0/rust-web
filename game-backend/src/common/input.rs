@@ -70,6 +70,11 @@ impl InputManager {
         if let Some(input) = input {
             if input.expect != data.name {
                 // ignore other input
+                log::info!(
+                    "ignore unexpected input: {}, expected: {}",
+                    data.name,
+                    input.expect
+                );
                 return;
             }
             let _ = input.sender.send(data.payload).await; // ignore error

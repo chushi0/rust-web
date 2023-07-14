@@ -1,5 +1,6 @@
 use crate::common::room::{BizRoom, SafeRoom};
 use async_trait::async_trait;
+use idl_gen::bss_websocket_client::BoxProtobufPayload;
 
 #[derive(Debug)]
 pub struct Room {}
@@ -24,4 +25,6 @@ impl BizRoom for Room {
     async fn max_player_count(&self) -> usize {
         2
     }
+
+    async fn player_input(&self, user_id: i64, data: BoxProtobufPayload) {}
 }

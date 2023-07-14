@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use idl_gen::bss_websocket_client::BoxProtobufPayload;
 use idl_gen::game_backend::GameType;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
@@ -28,7 +29,6 @@ pub struct RoomKey {
     pub room_id: i32,
 }
 
-#[derive(Debug)]
 pub struct Room {
     room_key: RoomKey,
 
@@ -61,7 +61,7 @@ pub struct RoomPlayer {
 }
 
 #[async_trait]
-pub trait BizRoom: Send + Sync + Debug {
+pub trait BizRoom: Send + Sync {
     /// 游戏主逻辑
     async fn do_game_logic(&self, safe_room: SafeRoom);
 
@@ -70,6 +70,8 @@ pub trait BizRoom: Send + Sync + Debug {
 
     /// 游戏最大支持同时加入人数
     async fn max_player_count(&self) -> usize;
+
+    async fn player_input(&self, user_id: i64, data: BoxProtobufPayload);
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -1,4 +1,5 @@
 use crate::biz::hearthstone::model::*;
+use crate::common::input::InputManager;
 use crate::common::room::SafeRoom;
 use datastructure::CycleArrayVector;
 use rand::seq::SliceRandom;
@@ -10,6 +11,7 @@ const MAX_HERO_HP: i32 = 30;
 
 pub struct Game {
     room: SafeRoom,
+    input: Arc<InputManager>,
     players: HashMap<i64, SafePlayer>,
     battlefields: HashMap<Camp, Battlefield>,
     turn: u64,
@@ -40,7 +42,7 @@ enum TurnAction {
 }
 
 impl Game {
-    pub async fn create(safe_room: SafeRoom) -> Game {
+    pub async fn create(safe_room: SafeRoom, input_manager: Arc<InputManager>) -> Game {
         let game_room = safe_room.clone();
         let game_room = game_room.lock().await;
         let mut players = HashMap::new();
@@ -56,6 +58,7 @@ impl Game {
 
         Game {
             room: safe_room,
+            input: input_manager,
             players,
             battlefields,
             turn: 0,
@@ -112,7 +115,7 @@ impl Game {
     }
 
     async fn init_players(&mut self) {
-        // TODO: 选择前后、起始手牌\
+        // TODO: 选择前后、起始手牌
     }
 
     async fn do_main_turn(&mut self) {}

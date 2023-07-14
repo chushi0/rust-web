@@ -67,7 +67,10 @@ message PlayerUseCardAction {
 }
 
 // 玩家使用卡事件
-message PlayerUseCardEvent { int32 card_index = 1; }
+message PlayerUseCardEvent {
+  int32 card_index = 1;
+  Card card = 2;
+}
 
 // 随从入场事件
 message MissionEnterEvent {
