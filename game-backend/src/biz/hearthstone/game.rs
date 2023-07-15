@@ -4,7 +4,9 @@ use crate::common::room::SafeRoom;
 use datastructure::CycleArrayVector;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
+use std::future::Future;
 use std::sync::Arc;
+use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
 const MAX_HERO_HP: i32 = 30;
@@ -115,7 +117,38 @@ impl Game {
     }
 
     async fn init_players(&mut self) {
-        // TODO: 选择前后、起始手牌
+        // 选择前后
+        let (task_a, timeout_a) = self.init_player_select_fightline(Camp::A);
+        let (task_b, timeout_b) = self.init_player_select_fightline(Camp::B);
+        let select_fightline_task = tokio::spawn(async {
+            tokio::join!(task_a, task_b);
+        });
+        tokio::time::sleep(tokio::time::Duration::from_secs(20)).await;
+        timeout_a.send(()).await.expect("should be sent");
+        timeout_b.send(()).await.expect("should be sent");
+        select_fightline_task.await.expect("should exit normal");
+        // 选择起始手牌
+    }
+
+    fn init_player_select_fightline(
+        &mut self,
+        camp: Camp,
+    ) -> (impl Future<Output = ()>, mpsc::Sender<()>) {
+        let (sender, mut receiver) = mpsc::channel(1);
+
+        let task = async move {
+            loop {
+                tokio::select! {
+                    _ = receiver.recv() => {
+                        // TODO: 发送完成选择信息
+                        // 结束协程
+                        return;
+                    }
+                }
+            }
+        };
+
+        (task, sender)
     }
 
     async fn do_main_turn(&mut self) {}

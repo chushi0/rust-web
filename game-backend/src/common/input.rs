@@ -1,9 +1,9 @@
 use core::time;
 use idl_gen::bss_websocket_client::BoxProtobufPayload;
 use protobuf::Message;
-use std::collections::HashMap;
+use std::{collections::HashMap, marker::PhantomData};
 use tokio::sync::{
-    mpsc::{self, Sender},
+    mpsc::{self, error::SendError, UnboundedReceiver},
     Mutex,
 };
 
@@ -14,7 +14,22 @@ pub struct InputManager {
 
 struct Input {
     expect: String,
-    sender: Sender<Vec<u8>>,
+    sender: BoxSender<Vec<u8>>,
+    oneshot: bool,
+}
+
+pub struct InputWatcher<T>
+where
+    T: Message,
+{
+    user_id: i64,
+    receiver: UnboundedReceiver<Vec<u8>>,
+    _marker: PhantomData<T>,
+}
+
+enum BoxSender<T> {
+    Sender(tokio::sync::mpsc::Sender<T>),
+    UnboundedSender(tokio::sync::mpsc::UnboundedSender<T>),
 }
 
 impl InputManager {
@@ -34,7 +49,8 @@ impl InputManager {
 
         let input = Input {
             expect: T::NAME.to_string(),
-            sender,
+            sender: BoxSender::Sender(sender),
+            oneshot: true,
         };
 
         self.list.lock().await.insert(user_id, input);
@@ -64,6 +80,34 @@ impl InputManager {
         }
     }
 
+    pub async fn register_input_watcher<T>(&self, user_id: i64) -> InputWatcher<T>
+    where
+        T: Message,
+    {
+        let (sender, recv) = mpsc::unbounded_channel();
+
+        let input = Input {
+            expect: T::NAME.to_string(),
+            sender: BoxSender::UnboundedSender(sender),
+            oneshot: false,
+        };
+
+        self.list.lock().await.insert(user_id, input);
+
+        return InputWatcher {
+            user_id,
+            receiver: recv,
+            _marker: PhantomData,
+        };
+    }
+
+    pub async fn unregister_input_watcher<T>(&self, watcher: InputWatcher<T>)
+    where
+        T: Message,
+    {
+        self.list.lock().await.remove(&watcher.user_id);
+    }
+
     pub async fn player_input(&self, user_id: i64, data: BoxProtobufPayload) {
         let mut list = self.list.lock().await;
         let input = list.get(&user_id);
@@ -78,7 +122,28 @@ impl InputManager {
                 return;
             }
             let _ = input.sender.send(data.payload).await; // ignore error
-            list.remove(&user_id);
+            if input.oneshot {
+                list.remove(&user_id);
+            }
         }
+    }
+}
+
+impl<T> BoxSender<T> {
+    async fn send(&self, data: T) -> Result<(), SendError<T>> {
+        match self {
+            BoxSender::Sender(sender) => sender.send(data).await,
+            BoxSender::UnboundedSender(sender) => sender.send(data),
+        }
+    }
+}
+
+impl<T> InputWatcher<T>
+where
+    T: Message,
+{
+    pub async fn get_next_input(&mut self) -> Result<T, protobuf::Error> {
+        let bytes = self.receiver.recv().await.expect("should not be none");
+        T::parse_from_bytes(&bytes)
     }
 }
