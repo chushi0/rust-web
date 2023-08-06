@@ -1,10 +1,12 @@
-use super::db_cache;
 use crate::biz::hearthstone::model::*;
 use crate::common::input::InputManager;
+use crate::common::input::InputWatcher;
 use crate::common::room::SafeRoom;
 use anyhow::Result;
 use datastructure::CycleArrayVector;
 use idl_gen::bss_hearthstone::JoinRoomExtraData;
+use idl_gen::bss_hearthstone::Position;
+use idl_gen::bss_hearthstone::SelectPositionAction;
 use protobuf::Message;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
@@ -31,7 +33,7 @@ pub struct Player {
     user_id: i64,
 
     camp: Camp,
-    figntline: Fightline,
+    fightline: Fightline,
 
     hero_hp: i32,
     hand_cards: Vec<Card>,
@@ -129,8 +131,8 @@ impl Game {
 
     async fn player_init(&mut self) {
         // 选择前后
-        let (task_a, timeout_a) = self.init_player_select_fightline(Camp::A);
-        let (task_b, timeout_b) = self.init_player_select_fightline(Camp::B);
+        let (task_a, timeout_a) = self.init_player_select_fightline(Camp::A).await;
+        let (task_b, timeout_b) = self.init_player_select_fightline(Camp::B).await;
         let select_fightline_task = tokio::spawn(async {
             tokio::join!(task_a, task_b);
         });
@@ -141,22 +143,82 @@ impl Game {
         // 选择起始手牌
     }
 
-    fn init_player_select_fightline(
+    async fn init_player_select_fightline(
         &mut self,
         camp: Camp,
     ) -> (impl Future<Output = ()>, mpsc::Sender<()>) {
         let (sender, mut receiver) = mpsc::channel(1);
 
+        let mut players = vec![];
+        for (player_id, safe_player) in &self.players {
+            let player = safe_player.lock().await;
+            if player.camp != camp {
+                continue;
+            }
+            players.push((player_id.clone(), safe_player.clone()));
+        }
+        assert!(players.len() == 2);
+
+        let input = self.input.clone();
+        let mut input_watcher_1: InputWatcher<SelectPositionAction> =
+            input.register_input_watcher(players[0].0).await;
+        let mut input_watcher_2: InputWatcher<SelectPositionAction> =
+            input.register_input_watcher(players[1].0).await;
+
+        let mut pos = vec![Position::Undefined, Position::Undefined];
+        let random_result = self.room.lock().await.random(0, 2);
+
         let task = async move {
             loop {
                 tokio::select! {
                     _ = receiver.recv() => {
+                        let first_position = if pos[0] == Position::Undefined || pos[1] == Position::Undefined || pos[0] == pos[1] {
+                            if random_result == 0 {
+                                Fightline::Front
+                            } else {
+                                Fightline::Back
+                            }
+                        } else if pos[0] == Position::Front {
+                            Fightline::Front
+                        } else {
+                            Fightline::Back
+                        };
+
+                        let mut player = players[0].1.lock().await;
+                        player.fightline = first_position;
+                        let mut player = players[1].1.lock().await;
+                        player.fightline = first_position.swap();
+
                         // TODO: 发送完成选择信息
                         // 结束协程
-                        return;
+                        break;
+                    },
+                    Ok(input) = input_watcher_1.get_next_input() => {
+                        let input = input.position.enum_value().expect("position");
+                        pos[0] = input;
+                        pos[1] = match input {
+                            Position::Undefined => Position::Undefined,
+                            Position::Front => Position::Back,
+                            Position::Back => Position::Front,
+                        };
+                        // TODO: 发送玩家选择信息
+                    },
+                    Ok(input) = input_watcher_2.get_next_input() => {
+                        let input = input.position.enum_value().expect("position");
+                        pos[1] = input;
+                        pos[0] = match input {
+                            Position::Undefined => Position::Undefined,
+                            Position::Front => Position::Back,
+                            Position::Back => Position::Front,
+                        };
+
+                        // TODO: 发送玩家选择信息
                     }
                 }
             }
+
+            input.unregister_input_watcher(input_watcher_1).await;
+            input.unregister_input_watcher(input_watcher_2).await;
         };
 
         (task, sender)
@@ -173,16 +235,16 @@ impl Player {
 
         let mut deck_cards = Vec::with_capacity(data.card_code.len());
         for code in data.card_code {
-            deck_cards.push(db_cache::get_cache_card(code).await)
+            deck_cards.push(Card::from_cache(code).await?)
         }
 
         Ok(Player {
             user_id,
             camp: Camp::A,
-            figntline: Fightline::Front,
+            fightline: Fightline::Front,
             hero_hp: MAX_HERO_HP,
             hand_cards: vec![],
-            deck_cards: vec![],
+            deck_cards: deck_cards,
         })
     }
 }

@@ -1,8 +1,7 @@
-use std::sync::Arc;
-
-use web_db::hearthstone::SpecialCardInfo;
-
 use super::db_cache;
+use anyhow::Result;
+use std::sync::Arc;
+use web_db::hearthstone::SpecialCardInfo;
 
 // 阵营
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -12,6 +11,7 @@ pub enum Camp {
 }
 
 // 前后方
+#[derive(Debug, Clone, Copy)]
 pub enum Fightline {
     Front,
     Back,
@@ -43,6 +43,12 @@ pub struct Card {
 }
 
 impl Card {
+    pub async fn from_cache(code: String) -> Result<Card> {
+        Ok(Card {
+            card: db_cache::get_cache_card(code).await?,
+        })
+    }
+
     // 法力值消耗
     pub fn get_mana_cost(&self) -> i32 {
         self.card.card.mana_cost
