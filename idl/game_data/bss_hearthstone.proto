@@ -61,7 +61,7 @@ message Target {
 
 // 玩家使用卡
 message PlayerUseCardAction {
-  int32 card_index = 1;
+  int32 card_index = 1; // -1 表示回合结束
   optional Target target = 2;
   optional int32 summon_position = 3;
 }
