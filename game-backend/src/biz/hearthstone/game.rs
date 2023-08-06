@@ -30,7 +30,7 @@ pub struct Game {
     game_end: bool,
 }
 
-type SafePlayer = Arc<Mutex<Player>>;
+pub type SafePlayer = Arc<Mutex<Player>>;
 
 pub struct Player {
     user_id: i64,
@@ -305,7 +305,7 @@ impl Game {
         let player = self.players.get(&uid).expect("should exist").clone();
         let mut player = player.lock().await;
         // 抽牌
-        player.draw_card(1);
+        player.draw_card(1).await;
         // 注册输入
         let mut input: InputWatcher<PlayerUseCardAction> =
             self.input.register_input_watcher(uid).await;
@@ -316,7 +316,7 @@ impl Game {
             if action.card_index == -1 {
                 break;
             }
-            // TODO: 卡牌动作
+            // 卡牌动作
         }
         // 回合结束
     }

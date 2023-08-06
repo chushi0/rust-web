@@ -72,10 +72,15 @@ impl Card {
             None
         }
     }
+
+    pub fn get_model(&self) -> Arc<db_cache::DbCardCache> {
+        self.card.clone()
+    }
 }
 
 pub struct Minion {
     model: Arc<db_cache::DbCardCache>,
+    minion_id: u64,
     atk: i32,
     hp: i32,
     maxhp: i32,
