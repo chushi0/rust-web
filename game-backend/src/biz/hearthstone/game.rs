@@ -5,6 +5,7 @@ use crate::common::room::SafeRoom;
 use anyhow::Result;
 use datastructure::CycleArrayVector;
 use idl_gen::bss_hearthstone::JoinRoomExtraData;
+use idl_gen::bss_hearthstone::PlayerUseCardAction;
 use idl_gen::bss_hearthstone::Position;
 use idl_gen::bss_hearthstone::ReplacePrepareCardAction;
 use idl_gen::bss_hearthstone::SelectPositionAction;
@@ -40,12 +41,15 @@ pub struct Player {
     hero_hp: i32,
     hand_cards: Vec<Card>,
     deck_cards: Vec<Card>,
+
+    tired: i32,
 }
 
 pub struct Battlefield {
     minions: Vec<Minion>,
 }
 
+#[derive(Debug, Clone, Copy)]
 enum TurnAction {
     PlayerAction { uid: i64 },
     SwapFrontBack,
@@ -289,7 +293,38 @@ impl Game {
         }
     }
 
-    async fn do_main_turn(&mut self) {}
+    async fn do_main_turn(&mut self) {
+        match *self.current_turn_action {
+            TurnAction::PlayerAction { uid } => self.do_player_turn(uid).await,
+            TurnAction::SwapFrontBack => self.do_swap_front_back_turn().await,
+        }
+    }
+
+    async fn do_player_turn(&mut self, uid: i64) {
+        // 获取当前玩家
+        let player = self.players.get(&uid).expect("should exist").clone();
+        let mut player = player.lock().await;
+        // 抽牌
+        player.draw_card(1);
+        // 注册输入
+        let mut input: InputWatcher<PlayerUseCardAction> =
+            self.input.register_input_watcher(uid).await;
+        // 循环获取输入，处理回合事件
+        // TODO: 超时
+        while let Ok(action) = input.get_next_input().await {
+            // 玩家主动回合结束
+            if action.card_index == -1 {
+                break;
+            }
+            // TODO: 卡牌动作
+        }
+        // 回合结束
+    }
+
+    async fn do_swap_front_back_turn(&mut self) {
+        // TODO: 交换玩家前后排
+        // TODO: 扳机
+    }
 
     async fn do_game_end(&mut self) {}
 }
@@ -310,7 +345,25 @@ impl Player {
             hero_hp: MAX_HERO_HP,
             hand_cards: vec![],
             deck_cards,
+            tired: 0,
         })
+    }
+
+    async fn draw_card(&mut self, c: i32) {
+        for _ in 0..c {
+            self.draw_card_internal();
+        }
+        // TODO: 通知玩家
+    }
+
+    fn draw_card_internal(&mut self) {
+        if self.deck_cards.is_empty() {
+            self.tired += 1;
+            self.damage(self.tired);
+            return;
+        }
+        self.hand_cards.push(self.deck_cards[0].clone());
+        self.deck_cards.remove(0);
     }
 }
 
