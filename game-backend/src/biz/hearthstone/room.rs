@@ -26,10 +26,15 @@ impl Room {
 impl BizRoom for Room {
     async fn do_game_logic(&self, safe_room: SafeRoom) {
         log::info!("game start");
-        Game::create(safe_room, self.input.clone())
-            .await
-            .run()
-            .await;
+        let room = Game::create(safe_room, self.input.clone()).await;
+        let room = match room {
+            Ok(room) => room,
+            Err(e) => {
+                log::error!("create room err: {e}");
+                return;
+            }
+        };
+        room.run().await;
     }
 
     async fn check_start(&self, player_count: usize) -> bool {

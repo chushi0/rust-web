@@ -1,7 +1,11 @@
+use super::db_cache;
 use crate::biz::hearthstone::model::*;
 use crate::common::input::InputManager;
 use crate::common::room::SafeRoom;
+use anyhow::Result;
 use datastructure::CycleArrayVector;
+use idl_gen::bss_hearthstone::JoinRoomExtraData;
+use protobuf::Message;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::future::Future;
@@ -44,21 +48,28 @@ enum TurnAction {
 }
 
 impl Game {
-    pub async fn create(safe_room: SafeRoom, input_manager: Arc<InputManager>) -> Game {
+    pub async fn create(safe_room: SafeRoom, input_manager: Arc<InputManager>) -> Result<Game> {
         let game_room = safe_room.clone();
-        let game_room = game_room.lock().await;
+        let game_room: tokio::sync::MutexGuard<'_, crate::common::room::Room> =
+            game_room.lock().await;
         let mut players = HashMap::new();
-        game_room.players().iter().for_each(|player| {
+        for player in game_room.players() {
+            let extra_data = match player.get_extra_data() {
+                Some(data) => data,
+                None => return Err(anyhow::anyhow!("extra data is empty")),
+            };
             players.insert(
                 player.get_user_id(),
-                Arc::new(Mutex::new(Player::new(player.get_user_id()))),
+                Arc::new(Mutex::new(
+                    Player::with_extra_data(player.get_user_id(), extra_data).await?,
+                )),
             );
-        });
+        }
         let mut battlefields = HashMap::new();
         battlefields.insert(Camp::A, Battlefield::new());
         battlefields.insert(Camp::B, Battlefield::new());
 
-        Game {
+        Ok(Game {
             room: safe_room,
             input: input_manager,
             players,
@@ -66,14 +77,14 @@ impl Game {
             turn: 0,
             current_turn_action: CycleArrayVector::new(vec![TurnAction::SwapFrontBack]),
             game_end: false,
-        }
+        })
     }
 
     pub async fn run(mut self) {
         // 全局初始化，分组、下发游戏开局信息
         self.global_init().await;
         // 玩家选择前后场，决定起始手牌
-        self.init_players().await;
+        self.player_init().await;
         // 主回合
         while !self.game_end {
             self.do_main_turn().await;
@@ -116,7 +127,7 @@ impl Game {
         // TODO: 下发分组信息
     }
 
-    async fn init_players(&mut self) {
+    async fn player_init(&mut self) {
         // 选择前后
         let (task_a, timeout_a) = self.init_player_select_fightline(Camp::A);
         let (task_b, timeout_b) = self.init_player_select_fightline(Camp::B);
@@ -157,15 +168,22 @@ impl Game {
 }
 
 impl Player {
-    fn new(user_id: i64) -> Player {
-        Player {
+    async fn with_extra_data(user_id: i64, extra_data: &Vec<u8>) -> Result<Player> {
+        let data = JoinRoomExtraData::parse_from_bytes(extra_data)?;
+
+        let mut deck_cards = Vec::with_capacity(data.card_code.len());
+        for code in data.card_code {
+            deck_cards.push(db_cache::get_cache_card(code).await)
+        }
+
+        Ok(Player {
             user_id,
             camp: Camp::A,
             figntline: Fightline::Front,
             hero_hp: MAX_HERO_HP,
             hand_cards: vec![],
             deck_cards: vec![],
-        }
+        })
     }
 }
 
