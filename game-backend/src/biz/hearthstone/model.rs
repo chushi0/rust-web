@@ -37,6 +37,7 @@ impl Fightline {
 
 // 卡牌（手中、战场上）
 // 单独抽出一个结构体，为后期污手党、心火牧做准备
+#[derive(Clone)]
 pub struct Card {
     // 对应db卡牌
     card: Arc<db_cache::DbCardCache>,

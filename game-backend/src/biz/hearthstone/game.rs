@@ -6,12 +6,14 @@ use anyhow::Result;
 use datastructure::CycleArrayVector;
 use idl_gen::bss_hearthstone::JoinRoomExtraData;
 use idl_gen::bss_hearthstone::Position;
+use idl_gen::bss_hearthstone::ReplacePrepareCardAction;
 use idl_gen::bss_hearthstone::SelectPositionAction;
 use protobuf::Message;
 use rand::seq::SliceRandom;
 use std::collections::HashMap;
 use std::future::Future;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 
@@ -141,6 +143,19 @@ impl Game {
         timeout_b.send(()).await.expect("should be sent");
         select_fightline_task.await.expect("should exit normal");
         // 选择起始手牌
+        let mut player_ids = vec![];
+        for (id, _) in &self.players {
+            player_ids.push(id.clone());
+        }
+        assert!(player_ids.len() == 4);
+        let task_a = self.init_player_start_cards(player_ids[0]).await;
+        let task_b = self.init_player_start_cards(player_ids[1]).await;
+        let task_c = self.init_player_start_cards(player_ids[2]).await;
+        let task_d = self.init_player_start_cards(player_ids[3]).await;
+        let start_cards_task = tokio::spawn(async {
+            tokio::join!(task_a, task_b, task_c, task_d);
+        });
+        start_cards_task.await.expect("should exit normal");
     }
 
     async fn init_player_select_fightline(
@@ -222,6 +237,48 @@ impl Game {
         };
 
         (task, sender)
+    }
+
+    async fn init_player_start_cards(&self, player_id: i64) -> impl Future<Output = ()> {
+        let mut rng = self.room.lock().await.new_rng();
+        let player = self
+            .players
+            .get(&player_id)
+            .expect("should has player")
+            .clone();
+        let input = self.input.clone();
+
+        async move {
+            let mut player = player.lock().await;
+            // 刷新牌库
+            player.deck_cards.shuffle(&mut rng);
+
+            // 起始手牌
+            let mut cards = player.deck_cards[..3].to_vec();
+            player.deck_cards = player.deck_cards[3..].to_vec();
+
+            let input: ReplacePrepareCardAction = input
+                .wait_for_input(
+                    player_id,
+                    Duration::from_secs(20),
+                    || ReplacePrepareCardAction::default(),
+                    Some(|| {
+                        // TODO: 发送起始手牌
+                        ()
+                    }),
+                )
+                .await;
+
+            // 换牌
+            let mut index = 0;
+            for i in input.card_index {
+                (player.deck_cards[index], cards[i as usize]) =
+                    (cards[i as usize].clone(), player.deck_cards[index].clone());
+                index += 1;
+            }
+
+            player.hand_cards = cards;
+        }
     }
 
     async fn do_main_turn(&mut self) {}
