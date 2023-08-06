@@ -105,7 +105,11 @@ impl Game {
         let mut rng = self.room.lock().await.new_rng();
         // 全体玩家id
         let mut player_ids: Vec<i64> = self.players.iter().map(|player| *player.0).collect();
-        assert!(player_ids.len() == 4);
+        assert!(
+            player_ids.len() == 4,
+            "len of player_ids: {}",
+            player_ids.len()
+        );
         // 随机排序
         player_ids.shuffle(&mut rng);
         // 前两个是A阵营，后两个是B阵营
@@ -147,7 +151,11 @@ impl Game {
         for (id, _) in &self.players {
             player_ids.push(id.clone());
         }
-        assert!(player_ids.len() == 4);
+        assert!(
+            player_ids.len() == 4,
+            "len of player_ids: {}",
+            player_ids.len()
+        );
         let task_a = self.init_player_start_cards(player_ids[0]).await;
         let task_b = self.init_player_start_cards(player_ids[1]).await;
         let task_c = self.init_player_start_cards(player_ids[2]).await;
@@ -172,7 +180,7 @@ impl Game {
             }
             players.push((player_id.clone(), safe_player.clone()));
         }
-        assert!(players.len() == 2);
+        assert!(players.len() == 2, "len of players: {}", players.len());
 
         let input = self.input.clone();
         let mut input_watcher_1: InputWatcher<SelectPositionAction> =
@@ -301,7 +309,7 @@ impl Player {
             fightline: Fightline::Front,
             hero_hp: MAX_HERO_HP,
             hand_cards: vec![],
-            deck_cards: deck_cards,
+            deck_cards,
         })
     }
 }
