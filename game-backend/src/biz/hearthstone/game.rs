@@ -17,6 +17,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
+use tokio::sync::MutexGuard;
 
 const MAX_HERO_HP: i32 = 30;
 
@@ -46,7 +47,7 @@ pub struct Player {
 }
 
 pub struct Battlefield {
-    minions: Vec<Minion>,
+    minions: Vec<Mutex<Minion>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -327,6 +328,91 @@ impl Game {
     }
 
     async fn do_game_end(&mut self) {}
+}
+
+impl Game {
+    pub async fn get_minion(&self, camp: &Camp, minion_id: u64) -> Option<MutexGuard<Minion>> {
+        let Some(battlefield) = self.battlefields.get(camp) else {
+            return None;
+        };
+        for minion in &battlefield.minions {
+            let minion = minion.lock().await;
+            if minion.id() == minion_id {
+                return Some(minion);
+            }
+        }
+        None
+    }
+
+    pub async fn get_minions(&self, camp: &Camp) -> Vec<MutexGuard<Minion>> {
+        let mut result = vec![];
+        let Some(battlefield) = self.battlefields.get(camp) else {
+            return result;
+        };
+        for minion in &battlefield.minions {
+            let minion = minion.lock().await;
+            result.push(minion);
+        }
+        result
+    }
+
+    pub async fn get_all_minions(&self) -> Vec<MutexGuard<Minion>> {
+        let mut result = vec![];
+        for (_, battlefield) in &self.battlefields {
+            for minion in &battlefield.minions {
+                let minion = minion.lock().await;
+                result.push(minion);
+            }
+        }
+        result
+    }
+
+    pub async fn get_player(&self, uid: i64) -> Option<MutexGuard<Player>> {
+        Some(self.players.get(&uid)?.lock().await)
+    }
+
+    pub async fn get_player_by_camp_pos(
+        &self,
+        camp: &Camp,
+        fightline: Fightline,
+    ) -> Option<MutexGuard<Player>> {
+        for (_, player) in &self.players {
+            let player = player.lock().await;
+            if player.camp == *camp && player.fightline == fightline {
+                return Some(player);
+            }
+        }
+        None
+    }
+
+    pub async fn get_player_by_pos(&self, fightline: Fightline) -> Option<MutexGuard<Player>> {
+        for (_, player) in &self.players {
+            let player = player.lock().await;
+            if player.fightline == fightline {
+                return Some(player);
+            }
+        }
+        None
+    }
+
+    pub async fn get_player_by_camp(&self, camp: &Camp) -> Vec<MutexGuard<Player>> {
+        let mut result = vec![];
+        for (_, player) in &self.players {
+            let player = player.lock().await;
+            if player.camp == *camp {
+                result.push(player);
+            }
+        }
+        result
+    }
+
+    pub async fn get_all_players(&self) -> Vec<MutexGuard<Player>> {
+        let mut result = vec![];
+        for (_, player) in &self.players {
+            result.push(player.lock().await);
+        }
+        result
+    }
 }
 
 impl Player {

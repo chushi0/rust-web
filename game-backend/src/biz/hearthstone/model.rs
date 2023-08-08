@@ -4,14 +4,14 @@ use std::sync::Arc;
 use web_db::hearthstone::SpecialCardInfo;
 
 // 阵营
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Camp {
     A,
     B,
 }
 
 // 前后方
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
 pub enum Fightline {
     Front,
     Back,
@@ -95,7 +95,15 @@ pub trait Damageable {
     }
 }
 
+pub trait Buffable {
+    fn buff(&mut self, buff: Buff);
+}
+
 impl Minion {
+    pub fn id(&self) -> u64 {
+        self.minion_id
+    }
+
     pub fn get_atk(&self) -> i32 {
         if self.atk > 0 {
             self.atk
@@ -103,8 +111,19 @@ impl Minion {
             0
         }
     }
+}
 
-    pub fn buff(&mut self, buff: Buff) {
+impl Damageable for Minion {
+    fn damage(&mut self, damage: i32) {
+        self.hp -= damage;
+        if self.hp > self.maxhp {
+            self.hp = self.maxhp;
+        }
+    }
+}
+
+impl Buffable for Minion {
+    fn buff(&mut self, buff: Buff) {
         self.atk += buff.atk_boost;
 
         if buff.hp_boost >= 0 {
@@ -121,19 +140,27 @@ impl Minion {
     }
 }
 
-impl Damageable for Minion {
-    fn damage(&mut self, damage: i32) {
-        self.hp -= damage;
-        if self.hp > self.maxhp {
-            self.hp = self.maxhp;
-        }
-    }
-}
-
+#[derive(Clone)]
 pub struct Buff {
     from_model: Arc<db_cache::DbCardCache>,
-    buff_name: String,
+    buff_type: i32,
 
     atk_boost: i32,
     hp_boost: i32,
+}
+
+impl Buff {
+    pub fn new(
+        model: Arc<db_cache::DbCardCache>,
+        buff_type: i32,
+        atk_boost: i32,
+        hp_boost: i32,
+    ) -> Buff {
+        Buff {
+            from_model: model,
+            buff_type,
+            atk_boost,
+            hp_boost,
+        }
+    }
 }

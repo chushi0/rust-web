@@ -129,8 +129,9 @@ pub enum CardEffect {
     // 获得buff
     Buff {
         target: Target,
-        atk_burst: i32,
-        hp_burst: i32,
+        buff_type: i32,
+        atk_boost: i32,
+        hp_boost: i32,
     },
     // 召唤随从
     SummonMinion {
