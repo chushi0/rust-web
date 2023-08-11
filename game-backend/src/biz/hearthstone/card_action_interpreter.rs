@@ -1,4 +1,5 @@
 use idl_gen::bss_hearthstone::BattlecryEvent;
+use pilota::async_recursion::async_recursion;
 use tokio::sync::MutexGuard;
 use web_db::hearthstone::{
     CardEffect, CardEffects, MinionEffect, SpecialCardInfo, SpellEffect, Target,
@@ -83,10 +84,15 @@ impl<'a> Interpreter<'a> {
         for effect in card_effects {
             match effect {
                 CardEffect::DealDamage { target, damage } => self
-                    .get_damageable_target(target, &mut just_summon)
+                    .get_target::<DamageableResult>(target, &mut just_summon)
                     .await
                     .damage(damage),
-                CardEffect::DrawCard { target, count } => todo!(),
+                CardEffect::DrawCard { target, count } => {
+                    self.get_target::<DrawcardResult>(target, &mut just_summon)
+                        .await
+                        .draw_card(count)
+                        .await
+                }
                 CardEffect::Buff {
                     target,
                     buff_type,
@@ -94,7 +100,7 @@ impl<'a> Interpreter<'a> {
                     hp_boost,
                 } => {
                     let buff = Buff::new(self.card.get_model(), buff_type, atk_boost, hp_boost);
-                    self.get_buffable_target(target, &mut just_summon)
+                    self.get_target::<BuffableResult>(target, &mut just_summon)
                         .await
                         .buff(buff)
                 }
@@ -111,7 +117,7 @@ impl<'a> Interpreter<'a> {
                     result.oppo_team_swap = result.oppo_team_swap || swap_opposite;
                 }
                 CardEffect::RecoverHealth { target, hp } => self
-                    .get_damageable_target(target, &mut just_summon)
+                    .get_target::<DamageableResult>(target, &mut just_summon)
                     .await
                     .heal(hp),
                 CardEffect::PreventNormalEffect => result.prevent_normal_effect = true,
@@ -179,37 +185,36 @@ impl<'a> Interpreter<'a> {
         None
     }
 
-    async fn get_target<'b>(
-        &'b mut self,
-        target: Target,
-        just_summon: &'b mut Vec<Minion>,
-    ) -> TargetResult<'b> {
+    async fn get_target<'b, T>(&'b mut self, target: Target, just_summon: &'b mut Vec<Minion>) -> T
+    where
+        T: From<TargetResult<'b>>,
+    {
         match target {
             Target::SelfMinion => {
                 if let EffectTarget::Minion { camp, minion_id } = &self.trigger {
                     if let Some(minion) = self.game.get_minion(camp, *minion_id).await {
-                        return TargetResult::Minion { minion };
+                        return TargetResult::Minion { minion }.into();
                     }
                 }
             }
             Target::SelfHero => {
                 if let EffectTarget::Hero { camp: _, uid } = &self.trigger {
                     if let Some(player) = self.game.get_player(*uid).await {
-                        return TargetResult::Player { player };
+                        return TargetResult::Player { player }.into();
                     }
                 }
             }
             Target::SelectTargetMinion => {
                 if let Some(EffectTarget::Minion { camp, minion_id }) = &self.pointer {
                     if let Some(minion) = self.game.get_minion(camp, *minion_id).await {
-                        return TargetResult::Minion { minion };
+                        return TargetResult::Minion { minion }.into();
                     }
                 }
             }
             Target::SelectTargetHero => {
                 if let Some(EffectTarget::Hero { camp: _, uid }) = &self.pointer {
                     if let Some(player) = self.game.get_player(*uid).await {
-                        return TargetResult::Player { player };
+                        return TargetResult::Player { player }.into();
                     }
                 }
             }
@@ -218,12 +223,12 @@ impl<'a> Interpreter<'a> {
                     match pointer {
                         EffectTarget::Minion { camp, minion_id } => {
                             if let Some(minion) = self.game.get_minion(camp, *minion_id).await {
-                                return TargetResult::Minion { minion };
+                                return TargetResult::Minion { minion }.into();
                             }
                         }
                         EffectTarget::Hero { camp: _, uid } => {
                             if let Some(player) = self.game.get_player(*uid).await {
-                                return TargetResult::Player { player };
+                                return TargetResult::Player { player }.into();
                             }
                         }
                     }
@@ -239,7 +244,8 @@ impl<'a> Interpreter<'a> {
                         .into_iter()
                         .map(|minion| TargetResult::Minion { minion })
                         .collect(),
-                };
+                }
+                .into();
             }
             Target::OppositeFrontHero => {
                 let camp = self.trigger.get_camp().opposite();
@@ -248,7 +254,7 @@ impl<'a> Interpreter<'a> {
                     .get_player_by_camp_pos(&camp, super::model::Fightline::Front)
                     .await;
                 if let Some(player) = player {
-                    return TargetResult::Player { player };
+                    return TargetResult::Player { player }.into();
                 }
             }
             Target::OppositeBackHero => {
@@ -258,7 +264,7 @@ impl<'a> Interpreter<'a> {
                     .get_player_by_camp_pos(&camp, super::model::Fightline::Back)
                     .await;
                 if let Some(player) = player {
-                    return TargetResult::Player { player };
+                    return TargetResult::Player { player }.into();
                 }
             }
             Target::OppositeAllHero => {
@@ -271,7 +277,8 @@ impl<'a> Interpreter<'a> {
                         .into_iter()
                         .map(|player| TargetResult::Player { player })
                         .collect(),
-                };
+                }
+                .into();
             }
             Target::OppositeAllEntity => {
                 let camp = self.trigger.get_camp().opposite();
@@ -292,7 +299,8 @@ impl<'a> Interpreter<'a> {
                                 .collect(),
                         },
                     ],
-                };
+                }
+                .into();
             }
             Target::TeamAllMinion => {
                 let camp = self.trigger.get_camp();
@@ -304,7 +312,8 @@ impl<'a> Interpreter<'a> {
                         .into_iter()
                         .map(|minion| TargetResult::Minion { minion })
                         .collect(),
-                };
+                }
+                .into();
             }
             Target::TeamFrontHero => {
                 let camp = self.trigger.get_camp();
@@ -313,7 +322,7 @@ impl<'a> Interpreter<'a> {
                     .get_player_by_camp_pos(&camp, super::model::Fightline::Front)
                     .await;
                 if let Some(player) = player {
-                    return TargetResult::Player { player };
+                    return TargetResult::Player { player }.into();
                 }
             }
             Target::TeamBackHero => {
@@ -323,7 +332,7 @@ impl<'a> Interpreter<'a> {
                     .get_player_by_camp_pos(&camp, super::model::Fightline::Back)
                     .await;
                 if let Some(player) = player {
-                    return TargetResult::Player { player };
+                    return TargetResult::Player { player }.into();
                 }
             }
             Target::TeamAllHero => {
@@ -336,7 +345,8 @@ impl<'a> Interpreter<'a> {
                         .into_iter()
                         .map(|player| TargetResult::Player { player })
                         .collect(),
-                };
+                }
+                .into();
             }
             Target::TeamAllEntity => {
                 let camp = self.trigger.get_camp();
@@ -357,7 +367,8 @@ impl<'a> Interpreter<'a> {
                                 .collect(),
                         },
                     ],
-                };
+                }
+                .into();
             }
             Target::AllMinion => {
                 return TargetResult::List {
@@ -369,6 +380,7 @@ impl<'a> Interpreter<'a> {
                         .map(|minion| TargetResult::Minion { minion })
                         .collect(),
                 }
+                .into();
             }
             Target::AllFrontHero => {
                 let player = self
@@ -376,7 +388,7 @@ impl<'a> Interpreter<'a> {
                     .get_player_by_pos(super::model::Fightline::Front)
                     .await;
                 if let Some(player) = player {
-                    return TargetResult::Player { player };
+                    return TargetResult::Player { player }.into();
                 }
             }
             Target::AllBackHero => {
@@ -385,7 +397,7 @@ impl<'a> Interpreter<'a> {
                     .get_player_by_pos(super::model::Fightline::Back)
                     .await;
                 if let Some(player) = player {
-                    return TargetResult::Player { player };
+                    return TargetResult::Player { player }.into();
                 }
             }
             Target::AllHero => {
@@ -397,7 +409,8 @@ impl<'a> Interpreter<'a> {
                         .into_iter()
                         .map(|player| TargetResult::Player { player })
                         .collect(),
-                };
+                }
+                .into();
             }
             Target::AllEntity => {
                 let minions: Vec<MutexGuard<'_, Minion>> = self.game.get_all_minions().await;
@@ -417,7 +430,8 @@ impl<'a> Interpreter<'a> {
                                 .collect(),
                         },
                     ],
-                };
+                }
+                .into();
             }
             Target::JustSummon => {
                 return TargetResult::List {
@@ -426,26 +440,11 @@ impl<'a> Interpreter<'a> {
                         .map(|minion| TargetResult::MutMinion { minion: minion })
                         .collect(),
                 }
+                .into();
             }
         };
 
-        TargetResult::None
-    }
-
-    async fn get_damageable_target<'b>(
-        &'b mut self,
-        target: Target,
-        just_summon: &'b mut Vec<Minion>,
-    ) -> DamageableResult<'b> {
-        self.get_target(target, just_summon).await.into()
-    }
-
-    async fn get_buffable_target<'b>(
-        &'b mut self,
-        target: Target,
-        just_summon: &'b mut Vec<Minion>,
-    ) -> BuffableResult<'b> {
-        self.get_target(target, just_summon).await.into()
+        TargetResult::None.into()
     }
 }
 
@@ -527,6 +526,41 @@ impl<'a> From<TargetResult<'a>> for BuffableResult<'a> {
                 list: list.into_iter().map(|it| it.into()).collect(),
             },
             TargetResult::None => BuffableResult::None,
+        }
+    }
+}
+
+enum DrawcardResult<'a> {
+    Player { player: MutexGuard<'a, Player> },
+    List { list: Vec<DrawcardResult<'a>> },
+    None,
+}
+
+impl DrawcardResult<'_> {
+    #[async_recursion]
+    async fn draw_card(&mut self, count: i32) {
+        match self {
+            DrawcardResult::Player { player } => player.draw_card(count).await,
+            DrawcardResult::List { list } => {
+                for it in list {
+                    it.draw_card(count).await
+                }
+            }
+            DrawcardResult::None => {}
+        };
+    }
+}
+
+impl<'a> From<TargetResult<'a>> for DrawcardResult<'a> {
+    fn from(value: TargetResult<'a>) -> Self {
+        match value {
+            TargetResult::Minion { minion } => DrawcardResult::None,
+            TargetResult::MutMinion { minion } => DrawcardResult::None,
+            TargetResult::Player { player } => DrawcardResult::Player { player },
+            TargetResult::List { list } => DrawcardResult::List {
+                list: list.into_iter().map(|it| it.into()).collect(),
+            },
+            TargetResult::None => DrawcardResult::None,
         }
     }
 }

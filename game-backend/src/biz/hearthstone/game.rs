@@ -435,7 +435,7 @@ impl Player {
         })
     }
 
-    async fn draw_card(&mut self, c: i32) {
+    pub async fn draw_card(&mut self, c: i32) {
         for _ in 0..c {
             self.draw_card_internal();
         }
