@@ -5,7 +5,7 @@ use crate::common::room::SafeRoom;
 use anyhow::Result;
 use datastructure::CycleArrayVector;
 use idl_gen::bss_hearthstone::JoinRoomExtraData;
-use idl_gen::bss_hearthstone::PlayerUseCardAction;
+use idl_gen::bss_hearthstone::PlayerTurnAction;
 use idl_gen::bss_hearthstone::Position;
 use idl_gen::bss_hearthstone::ReplacePrepareCardAction;
 use idl_gen::bss_hearthstone::SelectPositionAction;
@@ -308,16 +308,12 @@ impl Game {
         // 抽牌
         player.draw_card(1).await;
         // 注册输入
-        let mut input: InputWatcher<PlayerUseCardAction> =
+        let mut input: InputWatcher<PlayerTurnAction> =
             self.input.register_input_watcher(uid).await;
         // 循环获取输入，处理回合事件
         // TODO: 超时
         while let Ok(action) = input.get_next_input().await {
-            // 玩家主动回合结束
-            if action.card_index == -1 {
-                break;
-            }
-            // 卡牌动作
+            match action.action_type {};
         }
         // 回合结束
     }

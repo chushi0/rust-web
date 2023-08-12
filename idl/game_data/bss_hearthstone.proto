@@ -59,11 +59,38 @@ message Target {
   optional int32 player = 2;
 }
 
+enum PlayerTurnActionEnum {
+  PlayerEndTurn = 0;
+  PlayerUseCard = 1;
+  PlayerOperateMinion = 2;
+}
+
+// 玩家回合行动
+message PlayerTurnAction {
+  PlayerTurnActionEnum action_type = 1;
+  // 回合结束
+  optional PlayerEndTurnAction player_end_turn = 2;
+  // 使用卡
+  optional PlayerUseCardAction player_use_card = 3;
+  // 操作行动
+  optional PlayerOperateMinionAction player_operate_minion = 4;
+}
+
+// 回合结束
+message PlayerEndTurnAction {}
+
 // 玩家使用卡
 message PlayerUseCardAction {
-  int32 card_index = 1; // -1 表示回合结束
+  int32 card_index = 1;
   optional Target target = 2;
   optional int32 summon_position = 3;
+}
+
+// 玩家操作随从
+message PlayerOperateMinionAction {
+  int32 minion_id = 1;
+  bool attack_hero = 2;
+  int32 attack_id = 3;
 }
 
 // 玩家使用卡事件
