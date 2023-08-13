@@ -196,13 +196,13 @@ impl Component for GameNumberTowerPage {
                 <div class="container-sm">
                     <h3>{"数字爬塔游戏介绍"}</h3>
                     <p>{"玩家和敌人头上都有一个数字，代表战斗力。当玩家战斗力超过敌人时，可以战胜敌人，并抢夺敌人的战斗力。"}</p>
-                    <p>{"当探索完前方塔上每一层后，才可以继续探索向下一坐塔。"}</p>
+                    <p>{"当探索完前方塔上每一层后，才可以继续探索向下一座塔。"}</p>
                     <p>{"有些楼层上会存有道具，会令玩家战斗力进行变化。"}</p>
-                    <p>{"游戏目标是尽可能探索更多的塔。你能推进到第几坐塔？"}</p>
+                    <p>{"游戏目标是尽可能探索更多的塔。你能推进到第几座塔？"}</p>
                     <p>{"（如果你使用移动设备访问本页，建议在横屏下游玩）"}</p>
 
                     <hr/>
-                    <p>{format!("当前已探索 {} 坐塔", self.data.borrow().player_tower_count)}</p>
+                    <p>{format!("当前已探索 {} 座塔", self.data.borrow().player_tower_count)}</p>
 
                     <Canvas id="game-number-tower-main-canvas"
                             width={1920} height={1080}
@@ -222,7 +222,7 @@ impl Component for GameNumberTowerPage {
                                         <button type="button" class="btn-close" aria-label="Close" onclick={close_dialog.clone()}></button>
                                     </div>
                                     <div class="modal-body">
-                                        <p>{format!("您探索了 {} 坐塔", self.data.borrow().player_tower_count)}</p>
+                                        <p>{format!("您探索了 {} 座塔", self.data.borrow().player_tower_count)}</p>
                                     </div>
                                     <div class="modal-footer">
                                         <button type="button" class="btn btn-primary" onclick={close_dialog.clone()}>{"重新开始"}</button>
