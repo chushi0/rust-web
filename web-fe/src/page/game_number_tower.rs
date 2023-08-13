@@ -228,9 +228,10 @@ impl Component for GameNumberTowerPage {
                     <h4>{"最佳策略"}</h4>
                     <p>{"本内容以证明程序生成的关卡可以无限通关。"}</p>
                     <div class="container-sm" style="max-height: 120px; overflow-y: auto;">
+                    <ol>
                     {
                         self.data.borrow().best_choices.iter().map(|best_choice| html!{
-                            <p>
+                            <li>
                                 <span style="color:green;">{best_choice.start_atk}</span>
                                 {
                                     best_choice.tower_order.iter().map(|tower| html!{
@@ -269,9 +270,10 @@ impl Component for GameNumberTowerPage {
                                 }
                                 <b>{"👉"}</b>
                                 <span style="color:green;">{best_choice.result_atk}</span>
-                            </p>
+                            </li>
                         }).collect::<Html>()
                     }
+                    </ol>
                     </div>
 
                     if self.gameover {
