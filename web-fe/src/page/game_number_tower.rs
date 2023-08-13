@@ -18,12 +18,18 @@ pub enum GameNumberTowerPageMsg {
 
 struct GameData {
     towers: Vec<Tower>,
+    best_choices: Vec<BestChoice>,
     player_atk: i64,
     player_tower_count: i64,
     best_atk: i64,
 }
 
 type Tower = Vec<TowerLayerInfo>;
+struct BestChoice {
+    start_atk: i64,
+    tower_order: Vec<TowerLayerInfo>,
+    result_atk: i64,
+}
 
 #[derive(Debug, Clone, Copy)]
 enum TowerLayerInfo {
@@ -40,14 +46,16 @@ impl Component for GameNumberTowerPage {
     fn create(_ctx: &Context<Self>) -> Self {
         let mut data = GameData {
             towers: Vec::new(),
+            best_choices: Vec::new(),
             player_atk: 5,
             player_tower_count: 0,
             best_atk: 5,
         };
         for _ in 0..3 {
-            let (next_atk, tower) = generate_next_tower(data.best_atk);
-            data.best_atk = next_atk;
+            let (tower, best_choice) = generate_next_tower(data.best_atk);
+            data.best_atk = best_choice.result_atk;
             data.towers.push(tower);
+            data.best_choices.push(best_choice);
         }
         Self {
             data: Rc::new(RefCell::new(data)),
@@ -65,10 +73,12 @@ impl Component for GameNumberTowerPage {
                 data.player_atk = 5;
                 data.player_tower_count = 0;
                 data.best_atk = 5;
+                data.best_choices.clear();
                 for _ in 0..3 {
-                    let (next_atk, tower) = generate_next_tower(data.best_atk);
-                    data.best_atk = next_atk;
+                    let (tower, best_choice) = generate_next_tower(data.best_atk);
+                    data.best_atk = best_choice.result_atk;
                     data.towers.push(tower);
+                    data.best_choices.push(best_choice);
                 }
             }
             GameNumberTowerPageMsg::TowerClear => {}
@@ -178,9 +188,10 @@ impl Component for GameNumberTowerPage {
                 if all_clear {
                     data.player_tower_count += 1;
                     data.towers.remove(0);
-                    let (next_atk, tower) = generate_next_tower(data.best_atk);
-                    data.best_atk = next_atk;
+                    let (tower, best_choice) = generate_next_tower(data.best_atk);
+                    data.best_atk = best_choice.result_atk;
                     data.towers.push(tower);
+                    data.best_choices.push(best_choice);
                     link.send_message(GameNumberTowerPageMsg::TowerClear);
                 }
             })
@@ -212,6 +223,56 @@ impl Component for GameNumberTowerPage {
                             onmousedown={onmousedown}
                             onmouseup={onmouseup} />
 
+                    <br /><br /><br /><br /><br />
+
+                    <h4>{"最佳策略"}</h4>
+                    <p>{"本内容以证明程序生成的关卡可以无限通关。"}</p>
+                    <div class="container-sm" style="max-height: 120px; overflow-y: auto;">
+                    {
+                        self.data.borrow().best_choices.iter().map(|best_choice| html!{
+                            <p>
+                                <span style="color:green;">{best_choice.start_atk}</span>
+                                {
+                                    best_choice.tower_order.iter().map(|tower| html!{
+                                        <>
+                                            <b>{"👉"}</b>
+                                            {
+                                                match tower {
+                                                    TowerLayerInfo::Clear => panic!("should not clear"),
+                                                    TowerLayerInfo::Enemy { atk } => html!{<span style="color:red">{atk.to_string()}</span>},
+                                                    TowerLayerInfo::ItemBoost { add, mul } => html!{
+                                                        <span style="color:blue">
+                                                        {
+                                                            if *mul == 1 {
+                                                                format!("+{add}")
+                                                            } else {
+                                                                format!("×{mul}")
+                                                            }
+                                                        }
+                                                        </span>
+                                                    },
+                                                    TowerLayerInfo::ItemDamage { sub, divide } => html!{
+                                                        <span style="color:blue">
+                                                        {
+                                                            if *divide == 1 {
+                                                                format!("-{sub}")
+                                                            } else {
+                                                                format!("÷{divide}")
+                                                            }
+                                                        }
+                                                        </span>
+                                                    }
+                                                }
+                                            }
+                                        </>
+                                    }).collect::<Html>()
+                                }
+                                <b>{"👉"}</b>
+                                <span style="color:green;">{best_choice.result_atk}</span>
+                            </p>
+                        }).collect::<Html>()
+                    }
+                    </div>
 
                     if self.gameover {
                         <div class="modal" style="display: block;" tabindex="-1">
@@ -328,7 +389,7 @@ fn draw_tower_top(canvas: &CanvasRenderingContext2d, x: f64, y: f64) {
     canvas.stroke();
 }
 
-fn generate_next_tower(start_atk: i64) -> (i64, Tower) {
+fn generate_next_tower(start_atk: i64) -> (Tower, BestChoice) {
     log::info!("gen tower: start={start_atk}");
     let mut tower = Vec::new();
 
@@ -336,6 +397,7 @@ fn generate_next_tower(start_atk: i64) -> (i64, Tower) {
     let height = (random() * 4.0) as usize + 2;
 
     let mut atk = start_atk;
+    let mut order = Vec::new();
     while tower.len() < height {
         // 随机生成种类
         let type_rand = random();
@@ -349,12 +411,17 @@ fn generate_next_tower(start_atk: i64) -> (i64, Tower) {
         } else if type_rand < 0.4 && atk > 100 {
             tower.push(TowerLayerInfo::ItemDamage {
                 sub: 0,
-                divide: (((atk as f64).log10() * random()) as i64).max(2),
+                divide: (((atk as f64).log(8.0) * (random() * 0.5 + 0.5)) as i64).max(2),
             })
         } else if type_rand < 0.5 && atk > 100 {
             tower.push(TowerLayerInfo::ItemDamage {
                 sub: ((atk as f64 * random() * 0.8) as i64).max(1),
                 divide: 1,
+            })
+        } else if type_rand < 0.7 && atk > 100000000 {
+            tower.push(TowerLayerInfo::ItemDamage {
+                sub: 0,
+                divide: (((atk as f64).log(8.0) * (random() * 0.8 + 0.8)) as i64).max(10),
             })
         } else {
             let enemy_atk = (((random() / 5.0 + 0.8) * atk as f64) as i64).max(1);
@@ -362,7 +429,7 @@ fn generate_next_tower(start_atk: i64) -> (i64, Tower) {
         }
 
         // 重新计算最佳路线
-        atk = calc_best_atk(start_atk, &tower, &mut vec![true; tower.len()]);
+        (atk, order) = calc_best_atk(start_atk, &tower, &mut vec![true; tower.len()]);
         log::info!("tower: {tower:?}, best_atk: {atk:?}");
     }
 
@@ -373,15 +440,27 @@ fn generate_next_tower(start_atk: i64) -> (i64, Tower) {
         (tower[i], tower[j]) = (tower[j], tower[i]);
     }
 
-    (atk, tower)
+    (
+        tower,
+        BestChoice {
+            start_atk,
+            tower_order: order,
+            result_atk: atk,
+        },
+    )
 }
 
-fn calc_best_atk(start_atk: i64, tower: &Tower, accessible: &mut Vec<bool>) -> i64 {
+fn calc_best_atk(
+    start_atk: i64,
+    tower: &Tower,
+    accessible: &mut Vec<bool>,
+) -> (i64, Vec<TowerLayerInfo>) {
     if start_atk <= 0 {
-        return start_atk;
+        return (start_atk, Vec::new());
     }
 
     let mut best_atk = 0;
+    let mut best_order = Vec::new();
     let mut has_tower = false;
 
     for i in 0..tower.len() {
@@ -391,17 +470,19 @@ fn calc_best_atk(start_atk: i64, tower: &Tower, accessible: &mut Vec<bool>) -> i
         has_tower = true;
         let atk = tower[i].apply(start_atk);
         accessible[i] = false;
-        let atk = calc_best_atk(atk, tower, accessible);
+        let (atk, order) = calc_best_atk(atk, tower, accessible);
         accessible[i] = true;
         if atk > best_atk {
             best_atk = atk;
+            best_order = order;
+            best_order.insert(0, tower[i].clone());
         }
     }
 
     if !has_tower {
-        return start_atk;
+        return (start_atk, best_order);
     }
-    best_atk
+    (best_atk, best_order)
 }
 
 impl TowerLayerInfo {
