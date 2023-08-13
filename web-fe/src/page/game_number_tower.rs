@@ -161,7 +161,7 @@ impl Component for GameNumberTowerPage {
                     return;
                 };
                 data.player_atk = data.towers[0][layer].apply(data.player_atk);
-                if data.player_atk < 0 {
+                if data.player_atk <= 0 {
                     log::info!("You die");
                     link.send_message(GameNumberTowerPageMsg::Die);
                     return;
