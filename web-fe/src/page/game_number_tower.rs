@@ -17,6 +17,7 @@ pub enum GameNumberTowerPageMsg {
 }
 
 struct GameData {
+    canvas_handler: Option<CanvasHandler>,
     towers: Vec<Tower>,
     best_choices: Vec<BestChoice>,
     player_atk: i64,
@@ -43,20 +44,16 @@ impl Component for GameNumberTowerPage {
     type Message = GameNumberTowerPageMsg;
     type Properties = ();
 
-    fn create(_ctx: &Context<Self>) -> Self {
-        let mut data = GameData {
+    fn create(ctx: &Context<Self>) -> Self {
+        let data = GameData {
+            canvas_handler: None,
             towers: Vec::new(),
             best_choices: Vec::new(),
             player_atk: 5,
             player_tower_count: 0,
             best_atk: 5,
         };
-        for _ in 0..3 {
-            let (tower, best_choice) = generate_next_tower(data.best_atk);
-            data.best_atk = best_choice.result_atk;
-            data.towers.push(tower);
-            data.best_choices.push(best_choice);
-        }
+        ctx.link().send_message(GameNumberTowerPageMsg::Restart);
         Self {
             data: Rc::new(RefCell::new(data)),
             gameover: false,
@@ -80,6 +77,9 @@ impl Component for GameNumberTowerPage {
                     data.towers.push(tower);
                     data.best_choices.push(best_choice);
                 }
+                if let Some(canvas_handler) = &data.canvas_handler {
+                    canvas_handler.refresh();
+                }
             }
             GameNumberTowerPageMsg::TowerClear => {}
         }
@@ -89,19 +89,26 @@ impl Component for GameNumberTowerPage {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let link = ctx.link().clone();
 
-        let init_callback = Callback::from(|ctx: CanvasContext| {
-            let canvas: CanvasRenderingContext2d =
-                ctx.context.dyn_into().expect("should be 2d context");
-            let width = ctx.width as f64;
-            let height = ctx.height as f64;
-            canvas.set_fill_style(&JsValue::from("white"));
-            canvas.fill_rect(0.0, 0.0, width, height);
-            canvas.set_line_width(1.0);
-            canvas.set_stroke_style(&JsValue::from("black"));
-            canvas.begin_path();
-            canvas.rect(0.0, 0.0, width, height);
-            canvas.stroke();
-        });
+        let init_callback = {
+            let data = self.data.clone();
+            Callback::from(move |ctx: CanvasContext| {
+                let canvas: CanvasRenderingContext2d =
+                    ctx.context.dyn_into().expect("should be 2d context");
+                let width = ctx.width as f64;
+                let height = ctx.height as f64;
+                canvas.set_fill_style(&JsValue::from("white"));
+                canvas.fill_rect(0.0, 0.0, width, height);
+                canvas.set_line_width(1.0);
+                canvas.set_stroke_style(&JsValue::from("black"));
+                canvas.begin_path();
+                canvas.rect(0.0, 0.0, width, height);
+                canvas.stroke();
+                ctx.canvas_handler.refresh();
+
+                let mut data = data.borrow_mut();
+                data.canvas_handler = Some(ctx.canvas_handler);
+            })
+        };
         let render_callback = {
             let data = self.data.clone();
             Callback::from(move |ctx: CanvasContext| {
@@ -171,6 +178,7 @@ impl Component for GameNumberTowerPage {
                     return;
                 };
                 data.player_atk = data.towers[0][layer].apply(data.player_atk);
+                event.canvas_handler.refresh();
                 if data.player_atk <= 0 {
                     log::info!("You die");
                     link.send_message(GameNumberTowerPageMsg::Die);
@@ -216,7 +224,7 @@ impl Component for GameNumberTowerPage {
                     <p>{format!("当前已探索 {} 座塔", self.data.borrow().player_tower_count)}</p>
 
                     <Canvas id="game-number-tower-main-canvas"
-                            width={1920} height={1080}
+                            width={1920} height={1080} autorefresh={false}
                             contexttype={CanvasContextType::Type2D}
                             oninit={init_callback}
                             onrender={render_callback}
