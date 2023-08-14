@@ -166,7 +166,6 @@ impl Component for GameNumberTowerPage {
                 // draw player
             })
         };
-        let onmousedown = Callback::from(|_event: CanvasMouseEvent| {});
 
         let onmouseup = {
             let data = self.data.clone();
@@ -228,7 +227,6 @@ impl Component for GameNumberTowerPage {
                             contexttype={CanvasContextType::Type2D}
                             oninit={init_callback}
                             onrender={render_callback}
-                            onmousedown={onmousedown}
                             onmouseup={onmouseup} />
 
                     <br /><br /><br /><br /><br />

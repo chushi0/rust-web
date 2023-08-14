@@ -16,10 +16,10 @@ pub struct CanvasProps {
     pub height: usize,
     pub contexttype: CanvasContextType,
     pub autorefresh: bool,
-    pub oninit: Callback<CanvasContext>,
-    pub onrender: Callback<CanvasContext>,
-    pub onmousedown: Callback<CanvasMouseEvent>,
-    pub onmouseup: Callback<CanvasMouseEvent>,
+    pub oninit: Option<Callback<CanvasContext>>,
+    pub onrender: Option<Callback<CanvasContext>>,
+    pub onmousedown: Option<Callback<CanvasMouseEvent>>,
+    pub onmouseup: Option<Callback<CanvasMouseEvent>>,
 }
 
 pub struct CanvasContext {
@@ -83,13 +83,12 @@ impl Component for Canvas {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        let onmousedown = {
+        let onmousedown = if let Some(raw_onmousedown) = ctx.props().onmousedown.clone() {
             let link = ctx.link().clone();
-            let raw_onmousedown = ctx.props().onmousedown.clone();
             let canvas_node = self.canvas_node.clone();
             let width = ctx.props().width;
             let height = ctx.props().height;
-            Callback::from(move |raw_event: MouseEvent| {
+            Some(Callback::from(move |raw_event: MouseEvent| {
                 let canvas: HtmlCanvasElement = canvas_node.cast().expect("canvas element");
                 let dom_width = canvas.offset_width() as usize;
                 let dom_height = canvas.offset_height() as usize;
@@ -102,15 +101,16 @@ impl Component for Canvas {
                     width,
                     height,
                 })
-            })
+            }))
+        } else {
+            None
         };
-        let onmouseup = {
+        let onmouseup = if let Some(raw_onmouseup) = ctx.props().onmouseup.clone() {
             let link = ctx.link().clone();
-            let raw_onmouseup = ctx.props().onmouseup.clone();
             let canvas_node = self.canvas_node.clone();
             let width = ctx.props().width;
             let height = ctx.props().height;
-            Callback::from(move |raw_event: MouseEvent| {
+            Some(Callback::from(move |raw_event: MouseEvent| {
                 let canvas: HtmlCanvasElement = canvas_node.cast().expect("canvas element");
                 let dom_width = canvas.offset_width() as usize;
                 let dom_height = canvas.offset_height() as usize;
@@ -123,7 +123,9 @@ impl Component for Canvas {
                     width,
                     height,
                 })
-            })
+            }))
+        } else {
+            None
         };
 
         html! {
@@ -140,60 +142,64 @@ impl Component for Canvas {
 
 impl Canvas {
     fn on_init(&mut self, ctx: &Context<Self>) {
-        let canvas: HtmlCanvasElement = self
-            .canvas_node
-            .cast()
-            .expect("canvas_node should used as <canvas>");
-        let width = canvas.width() as usize;
-        let height = canvas.height() as usize;
-        let canvas_context = canvas
-            .get_context(ctx.props().contexttype.as_js_param())
-            .expect("should succes when get_context")
-            .expect("should not null when get_context");
+        if let Some(oninit) = &ctx.props().oninit {
+            let canvas: HtmlCanvasElement = self
+                .canvas_node
+                .cast()
+                .expect("canvas_node should used as <canvas>");
+            let width = canvas.width() as usize;
+            let height = canvas.height() as usize;
+            let canvas_context = canvas
+                .get_context(ctx.props().contexttype.as_js_param())
+                .expect("should succes when get_context")
+                .expect("should not null when get_context");
 
-        self.last_refresh_time = Instant::now();
+            self.last_refresh_time = Instant::now();
 
-        ctx.props().oninit.emit(CanvasContext {
-            canvas_handler: CanvasHandler {
-                link: ctx.link().clone(),
-            },
-            context: canvas_context,
-            width,
-            height,
-            delay: 0.0,
-        });
+            oninit.emit(CanvasContext {
+                canvas_handler: CanvasHandler {
+                    link: ctx.link().clone(),
+                },
+                context: canvas_context,
+                width,
+                height,
+                delay: 0.0,
+            });
+        }
         if ctx.props().autorefresh {
             ctx.link().send_message(CanvasMsg::Render);
         }
     }
 
     fn on_render(&mut self, ctx: &Context<Self>) {
-        let canvas: HtmlCanvasElement = self
-            .canvas_node
-            .cast()
-            .expect("canvas_node should used as <canvas>");
-        let width = canvas.width() as usize;
-        let height = canvas.height() as usize;
-        let canvas_context = canvas
-            .get_context(ctx.props().contexttype.as_js_param())
-            .expect("should succes when get_context")
-            .expect("should not null when get_context");
+        if let Some(onrender) = &ctx.props().onrender {
+            let canvas: HtmlCanvasElement = self
+                .canvas_node
+                .cast()
+                .expect("canvas_node should used as <canvas>");
+            let width = canvas.width() as usize;
+            let height = canvas.height() as usize;
+            let canvas_context = canvas
+                .get_context(ctx.props().contexttype.as_js_param())
+                .expect("should succes when get_context")
+                .expect("should not null when get_context");
 
-        let current_time = Instant::now();
-        let delay = current_time
-            .duration_since(self.last_refresh_time)
-            .as_secs_f64();
-        self.last_refresh_time = current_time;
+            let current_time = Instant::now();
+            let delay = current_time
+                .duration_since(self.last_refresh_time)
+                .as_secs_f64();
+            self.last_refresh_time = current_time;
 
-        ctx.props().onrender.emit(CanvasContext {
-            canvas_handler: CanvasHandler {
-                link: ctx.link().clone(),
-            },
-            context: canvas_context,
-            width,
-            height,
-            delay,
-        });
+            onrender.emit(CanvasContext {
+                canvas_handler: CanvasHandler {
+                    link: ctx.link().clone(),
+                },
+                context: canvas_context,
+                width,
+                height,
+                delay,
+            });
+        }
         if ctx.props().autorefresh {
             window()
                 .expect("window should not be null")
