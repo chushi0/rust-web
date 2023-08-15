@@ -45,12 +45,12 @@ pub struct Interpreter<'a> {
 #[derive(Debug, Default)]
 pub struct PerformResult {
     // 需要死亡检查
-    need_death_check: bool,
+    pub need_death_check: bool,
     // 取消通常法术效果
-    prevent_normal_effect: bool,
+    pub prevent_normal_effect: bool,
     // 交换前后排
-    my_team_swap: bool,
-    oppo_team_swap: bool,
+    pub my_team_swap: bool,
+    pub oppo_team_swap: bool,
 }
 
 impl<'a> Interpreter<'a> {

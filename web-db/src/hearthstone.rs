@@ -23,6 +23,28 @@ pub enum CardType {
     Spell,
 }
 
+impl TryFrom<i32> for CardType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: i32) -> std::result::Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Minion),
+            2 => Ok(Self::Spell),
+
+            _ => Err(anyhow::anyhow!("unknown enum value ({value})")),
+        }
+    }
+}
+
+impl From<CardType> for i32 {
+    fn from(value: CardType) -> Self {
+        match value {
+            CardType::Minion => 1,
+            CardType::Spell => 2,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CardInfo {
     #[serde(flatten)]

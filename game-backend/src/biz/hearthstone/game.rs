@@ -6,6 +6,7 @@ use anyhow::Result;
 use datastructure::CycleArrayVector;
 use idl_gen::bss_hearthstone::JoinRoomExtraData;
 use idl_gen::bss_hearthstone::PlayerTurnAction;
+use idl_gen::bss_hearthstone::PlayerTurnActionEnum;
 use idl_gen::bss_hearthstone::Position;
 use idl_gen::bss_hearthstone::ReplacePrepareCardAction;
 use idl_gen::bss_hearthstone::SelectPositionAction;
@@ -18,6 +19,11 @@ use std::time::Duration;
 use tokio::sync::mpsc;
 use tokio::sync::Mutex;
 use tokio::sync::MutexGuard;
+use web_db::hearthstone::CardType;
+
+use super::card_action_interpreter::EffectTarget;
+use super::card_action_interpreter::EventType;
+use super::card_action_interpreter::Interpreter;
 
 const MAX_HERO_HP: i32 = 30;
 
@@ -303,19 +309,94 @@ impl Game {
 
     async fn do_player_turn(&mut self, uid: i64) {
         // 获取当前玩家
-        let player = self.players.get(&uid).expect("should exist").clone();
-        let mut player = player.lock().await;
+        let safe_player = self.players.get(&uid).expect("should exist").clone();
+        let mut player = safe_player.lock().await;
         // 抽牌
         player.draw_card(1).await;
+        // 为避免后续卡牌效果执行时出现问题，暂时释放player的锁
+        drop(player);
         // 注册输入
         let mut input: InputWatcher<PlayerTurnAction> =
             self.input.register_input_watcher(uid).await;
         // 循环获取输入，处理回合事件
         // TODO: 超时
         while let Ok(action) = input.get_next_input().await {
-            match action.action_type {};
+            match action.action_type.unwrap() {
+                PlayerTurnActionEnum::PlayerEndTurn => break,
+                PlayerTurnActionEnum::PlayerUseCard => {
+                    let info = action.player_use_card;
+                    let mut player = safe_player.lock().await;
+                    let Some(card) = player.hand_cards.get(info.card_index as usize) else {
+                        // TODO: 消耗法力水晶
+                        continue;
+                    };
+                    let card = player.hand_cards.remove(info.card_index as usize);
+                    let camp = player.camp;
+                    let fightline = player.fightline;
+                    let uid = player.user_id;
+                    drop(player);
+
+                    let card_model = card.get_model().card.clone();
+
+                    // TODO: 死亡结算、交换前后排
+                    match card_model.card_type.try_into() {
+                        Ok(CardType::Minion) => {
+                            // 生成随从
+                            let minion_id = self.spawn_minion(camp, &card).await;
+
+                            let mut interpreter = Interpreter::new(
+                                self,
+                                EffectTarget::Minion { camp, minion_id },
+                                None,
+                                card,
+                            );
+                            // 战吼效果
+                            interpreter.perform(EventType::Battlecry, None).await;
+                        }
+                        Ok(CardType::Spell) => {
+                            let mut interpreter = Interpreter::new(
+                                self,
+                                EffectTarget::Hero { camp, uid },
+                                None,
+                                card,
+                            );
+                            let normal_spell;
+                            // 法术前后排效果
+                            match fightline {
+                                Fightline::Front => {
+                                    let result =
+                                        interpreter.perform(EventType::FrontUse, None).await;
+                                    normal_spell = !result.prevent_normal_effect;
+                                }
+                                Fightline::Back => {
+                                    let result =
+                                        interpreter.perform(EventType::BackUse, None).await;
+                                    normal_spell = !result.prevent_normal_effect;
+                                }
+                            }
+                            // 通常法术效果
+                            if normal_spell {
+                                interpreter.perform(EventType::NormalSpell, None).await;
+                            }
+                        }
+                        Err(_) => {
+                            log::error!(
+                                "card type error: {} (card_id: {})",
+                                card_model.card_type,
+                                card_model.rowid
+                            )
+                        }
+                    }
+                }
+                PlayerTurnActionEnum::PlayerOperateMinion => {}
+            };
         }
         // 回合结束
+    }
+
+    async fn spawn_minion(&mut self, camp: Camp, card: &Card) -> u64 {
+        // TODO
+        0
     }
 
     async fn do_swap_front_back_turn(&mut self) {
