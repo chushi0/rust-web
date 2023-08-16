@@ -102,7 +102,7 @@ pub trait Buffable {
 impl Minion {
     pub fn new(id: u64, card: &Card) -> Minion {
         let model = card.get_model();
-        let SpecialCardInfo::Minion(minion_info) = model.card_info.special_card_info else {
+        let SpecialCardInfo::Minion(minion_info) = model.card_info.special_card_info.clone() else {
             panic!("this should be minion card")
         };
         Minion {
