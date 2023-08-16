@@ -35,6 +35,7 @@ pub struct Game {
     turn: u64,
     current_turn_action: datastructure::CycleArrayVector<TurnAction>,
     game_end: bool,
+    global_id: u64,
 }
 
 pub type SafePlayer = Arc<Mutex<Player>>;
@@ -92,6 +93,7 @@ impl Game {
             turn: 0,
             current_turn_action: CycleArrayVector::new(vec![TurnAction::SwapFrontBack]),
             game_end: false,
+            global_id: 0,
         })
     }
 
@@ -395,8 +397,21 @@ impl Game {
     }
 
     async fn spawn_minion(&mut self, camp: Camp, card: &Card) -> u64 {
-        // TODO
-        0
+        let id = self.next_id();
+        let minion = Minion::new(id, card);
+        let battlefield = self
+            .battlefields
+            .get_mut(&camp)
+            .expect("battlefield should exist");
+        battlefield.minions.push(Mutex::new(minion));
+
+        id
+    }
+
+    fn next_id(&mut self) -> u64 {
+        let id = self.global_id;
+        self.global_id + 1;
+        id
     }
 
     async fn do_swap_front_back_turn(&mut self) {

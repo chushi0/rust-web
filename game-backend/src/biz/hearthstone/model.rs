@@ -1,7 +1,7 @@
 use super::db_cache;
 use anyhow::Result;
 use std::sync::Arc;
-use web_db::hearthstone::SpecialCardInfo;
+use web_db::hearthstone::{MinionCardInfo, SpecialCardInfo};
 
 // 阵营
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -100,6 +100,21 @@ pub trait Buffable {
 }
 
 impl Minion {
+    pub fn new(id: u64, card: &Card) -> Minion {
+        let model = card.get_model();
+        let SpecialCardInfo::Minion(minion_info) = model.card_info.special_card_info else {
+            panic!("this should be minion card")
+        };
+        Minion {
+            model,
+            minion_id: id,
+            atk: minion_info.attack,
+            hp: minion_info.health,
+            maxhp: minion_info.health,
+            buf_list: Vec::new(),
+        }
+    }
+
     pub fn id(&self) -> u64 {
         self.minion_id
     }
