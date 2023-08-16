@@ -102,6 +102,8 @@ impl Game {
         self.global_init().await;
         // 玩家选择前后场，决定起始手牌
         self.player_init().await;
+        // 初始化最后阶段：决定回合顺序
+        self.final_init().await;
         // 主回合
         while !self.game_end {
             self.do_main_turn().await;
@@ -135,15 +137,6 @@ impl Game {
                 .await
                 .camp = camp;
         }
-        // 按照 0 2 1 3 顺序行动
-        // let mut action_turn = Vec::with_capacity(5);
-        // for id in vec![0, 2, 1, 3] {
-        //     action_turn.push(TurnAction::PlayerAction {
-        //         uid: player_ids[id],
-        //     });
-        // }
-        // action_turn.push(TurnAction::SwapFrontBack);
-        // self.current_turn_action = CycleArrayVector::new(action_turn);
 
         // TODO: 下发分组信息
     }
@@ -302,6 +295,28 @@ impl Game {
         }
     }
 
+    async fn final_init(&mut self) {
+        let mut player_ids = vec![0; 4];
+        for (uid, player) in &self.players {
+            let player = player.lock().await;
+            let mut index = 0;
+            if let Camp::B = player.camp {
+                index &= 1;
+            }
+            if let Fightline::Back = player.fightline {
+                index &= 2;
+            }
+            player_ids[index] = *uid;
+        }
+
+        let mut action_turn = Vec::with_capacity(5);
+        for i in 0..4 {
+            action_turn.push(TurnAction::PlayerAction { uid: player_ids[i] });
+        }
+        action_turn.push(TurnAction::SwapFrontBack);
+        self.current_turn_action = CycleArrayVector::new(action_turn);
+    }
+
     async fn do_main_turn(&mut self) {
         match *self.current_turn_action {
             TurnAction::PlayerAction { uid } => self.do_player_turn(uid).await,
@@ -410,7 +425,7 @@ impl Game {
 
     fn next_id(&mut self) -> u64 {
         let id = self.global_id;
-        self.global_id + 1;
+        self.global_id += 1;
         id
     }
 
