@@ -1,7 +1,7 @@
 use super::db_cache;
 use anyhow::Result;
 use std::sync::Arc;
-use web_db::hearthstone::{MinionCardInfo, SpecialCardInfo};
+use web_db::hearthstone::SpecialCardInfo;
 
 // 阵营
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
@@ -37,7 +37,7 @@ impl Fightline {
 
 // 卡牌（手中、战场上）
 // 单独抽出一个结构体，为后期污手党、心火牧做准备
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct Card {
     // 对应db卡牌
     card: Arc<db_cache::DbCardCache>,
@@ -101,16 +101,13 @@ pub trait Buffable {
 
 impl Minion {
     pub fn new(id: u64, card: &Card) -> Minion {
-        let model = card.get_model();
-        let SpecialCardInfo::Minion(minion_info) = model.card_info.special_card_info.clone() else {
-            panic!("this should be minion card")
-        };
+        let model = card.get_model().clone();
         Minion {
             model,
             minion_id: id,
-            atk: minion_info.attack,
-            hp: minion_info.health,
-            maxhp: minion_info.health,
+            atk: card.get_minion_atk().expect("minion should has atk"),
+            hp: card.get_minion_maxhp().expect("minino should has maxhp"),
+            maxhp: card.get_minion_maxhp().expect("minion shuold has maxhp"),
             buf_list: Vec::new(),
         }
     }

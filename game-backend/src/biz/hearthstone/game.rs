@@ -40,6 +40,7 @@ pub struct Game {
 
 pub type SafePlayer = Arc<Mutex<Player>>;
 
+#[derive(Debug)]
 pub struct Player {
     user_id: i64,
 
@@ -50,6 +51,8 @@ pub struct Player {
     hand_cards: Vec<Card>,
     deck_cards: Vec<Card>,
 
+    mana: i32,
+    maxmana: i32,
     tired: i32,
 }
 
@@ -98,6 +101,7 @@ impl Game {
     }
 
     pub async fn run(mut self) {
+        log::debug!("start game");
         // 全局初始化，分组、下发游戏开局信息
         self.global_init().await;
         // 玩家选择前后场，决定起始手牌
@@ -114,6 +118,7 @@ impl Game {
         }
         // 游戏结束
         self.do_game_end().await;
+        log::debug!("end game");
     }
 
     async fn global_init(&mut self) {
@@ -139,6 +144,8 @@ impl Game {
         }
 
         // TODO: 下发分组信息
+
+        log::debug!("global init result: {:?}", &self.players)
     }
 
     async fn player_init(&mut self) {
@@ -170,6 +177,8 @@ impl Game {
             tokio::join!(task_a, task_b, task_c, task_d);
         });
         start_cards_task.await.expect("should exit normal");
+
+        log::debug!("player init result: {:?}", &self.players);
     }
 
     async fn init_player_select_fightline(
@@ -328,6 +337,11 @@ impl Game {
         // 获取当前玩家
         let safe_player = self.players.get(&uid).expect("should exist").clone();
         let mut player = safe_player.lock().await;
+        // 法力水晶
+        if player.maxmana < 10 {
+            player.maxmana += 1;
+        }
+        player.mana = player.maxmana;
         // 抽牌
         player.draw_card(1).await;
         // 为避免后续卡牌效果执行时出现问题，暂时释放player的锁
@@ -343,11 +357,11 @@ impl Game {
                 PlayerTurnActionEnum::PlayerUseCard => {
                     let info = action.player_use_card;
                     let mut player = safe_player.lock().await;
-                    let Some(card) = player.hand_cards.get(info.card_index as usize) else {
-                        // TODO: 消耗法力水晶
+                    let Some(_card) = player.hand_cards.get(info.card_index as usize) else {
                         continue;
                     };
                     let card = player.hand_cards.remove(info.card_index as usize);
+                    player.mana -= card.get_mana_cost();
                     let camp = player.camp;
                     let fightline = player.fightline;
                     let uid = player.user_id;
@@ -538,6 +552,8 @@ impl Player {
             hero_hp: MAX_HERO_HP,
             hand_cards: vec![],
             deck_cards,
+            mana: 0,
+            maxmana: 0,
             tired: 0,
         })
     }

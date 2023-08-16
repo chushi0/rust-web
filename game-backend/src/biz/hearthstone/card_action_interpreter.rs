@@ -1,9 +1,6 @@
-use idl_gen::bss_hearthstone::BattlecryEvent;
 use pilota::async_recursion::async_recursion;
 use tokio::sync::MutexGuard;
-use web_db::hearthstone::{
-    CardEffect, CardEffects, MinionEffect, SpecialCardInfo, SpellEffect, Target,
-};
+use web_db::hearthstone::{CardEffect, MinionEffect, SpecialCardInfo, SpellEffect, Target};
 
 use super::{
     game::{Game, Player},

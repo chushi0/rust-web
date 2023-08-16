@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::RwLock;
 use web_db::hearthstone::{Card, CardInfo};
 
+#[derive(Debug)]
 pub struct DbCardCache {
     pub card: Card,
     pub card_info: CardInfo,

@@ -358,12 +358,20 @@ impl Room {
     }
 
     async fn start_game_if_satisfy(&mut self, safe_room: SafeRoom) {
+        log::debug!("room {:?} checking start condition...", self.room_key);
         if self.join_players.iter().all(|player| player.ready)
             && self.biz_room.check_start(self.join_players.len()).await
         {
             self.player_lock = true;
+            log::debug!("room {:?} has satisfy the start condition", self.room_key);
             tokio::spawn(room_runner(self.biz_room.clone(), safe_room));
         }
+        log::debug!("room {:?} checked start condition", self.room_key);
+    }
+
+    #[cfg(test)]
+    pub fn biz_room(&self) -> Arc<Box<dyn BizRoom>> {
+        self.biz_room.clone()
     }
 
     /// 设置房间公开
@@ -433,4 +441,10 @@ async fn room_runner(biz_room: Arc<Box<dyn BizRoom>>, safe_room: SafeRoom) {
     if room.join_players.is_empty() {
         room.release().await;
     }
+}
+
+#[cfg(test)]
+pub async unsafe fn force_start_game(safe_room: SafeRoom) {
+    let biz_room = safe_room.lock().await.biz_room().clone();
+    room_runner(biz_room, safe_room).await;
 }
