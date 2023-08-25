@@ -34,6 +34,11 @@ pub fn NavBar(props: &NavBarProps) -> Html {
                 href: crate::Route::GameNumberTower,
             }]),
         },
+        Item::Item {
+            id: "dev-tools",
+            title: "Dev-Tools",
+            href: crate::Route::DevTools,
+        },
     ];
 
     html! {

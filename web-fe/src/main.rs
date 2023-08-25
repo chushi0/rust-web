@@ -14,6 +14,8 @@ enum Route {
     McAdvancement,
     #[at("/game/number-tower")]
     GameNumberTower,
+    #[at("/dev-tools")]
+    DevTools,
     #[not_found]
     #[at("/404")]
     NotFound,
@@ -25,6 +27,7 @@ fn switch(routes: Route) -> Html {
         Route::NotFound => html! { <NotFoundPage /> },
         Route::McAdvancement => html! { <McAdvancementPage /> },
         Route::GameNumberTower => html! { <GameNumberTowerPage/> },
+        Route::DevTools => html! { <DevToolsPage /> },
     }
 }
 
