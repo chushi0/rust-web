@@ -3,13 +3,6 @@
 version = 3
 
 [[package]]
-name = "datastructure"
-version = "0.1.0"
-dependencies = [
- "datastructure_macro_derive",
-]
-
-[[package]]
 name = "datastructure_macro_derive"
 version = "0.1.0"
 dependencies = [
