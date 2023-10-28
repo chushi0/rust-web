@@ -1,14 +1,15 @@
 [package]
+edition = "2021"
 name = "web-bss"
 version = "0.1.0"
-edition = "2021"
 
 [dependencies]
-rocket = { version = "0.5.0-rc.3", features = ["json"] }
-tokio = { version = "1.28.1", features = ["full"] }
 anyhow = "1.0"
+feishu-api = {path = "../feishu-api"}
 log = "0.4.6"
-time = "0.3.21"
-web-db = { path = "../web-db" }
-serde = { version = "1.0.163", features = ["rc"]}
+rocket = {version = "0.5.0-rc.3", features = ["json"]}
+serde = {version = "1.0.163", features = ["rc"]}
 serde_json = "1.0.96"
+time = "0.3.21"
+tokio = {version = "1.28.1", features = ["full"]}
+web-db = {path = "../web-db"}
