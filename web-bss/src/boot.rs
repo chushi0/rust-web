@@ -47,7 +47,7 @@ pub fn init_websocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
         let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
         while let Ok((stream, _)) = listener.accept().await {
-            serve_websocket(stream).await;
+            tokio::spawn(serve_websocket(stream));
         }
     })
 }
@@ -115,93 +115,91 @@ async fn serve_websocket(stream: TcpStream) {
     }
     let mut ws_stream = ServerBuilder::new().serve(buf_stream);
 
-    tokio::spawn(async move {
-        biz.on_open().await;
-        let mut ping_time = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap_or(Duration::default())
-            .as_millis();
-        let mut ping_data: u32 = 0;
-        let mut recv_response = false;
-        let _ = ws_stream
-            .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
-            .await;
-        let mut timeout_count = 0;
+    biz.on_open().await;
+    let mut ping_time = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or(Duration::default())
+        .as_millis();
+    let mut ping_data: u32 = 0;
+    let mut recv_response = false;
+    let _ = ws_stream
+        .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
+        .await;
+    let mut timeout_count = 0;
 
-        loop {
-            tokio::select! {
-                _ = sleep(Duration::from_secs(10)) => {
-                    if !recv_response {
-                        warn!("client not response in 10 secs");
-                        timeout_count += 1;
-                        if timeout_count > 10 {
-                            let _ = ws_stream.close(None, None).await;
+    loop {
+        tokio::select! {
+            _ = sleep(Duration::from_secs(10)) => {
+                if !recv_response {
+                    warn!("client not response in 10 secs");
+                    timeout_count += 1;
+                    if timeout_count > 10 {
+                        let _ = ws_stream.close(None, None).await;
+                    }
+                }
+                recv_response = false;
+                ping_data += 1;
+                ping_time = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap_or(Duration::default())
+                    .as_millis();
+                let _ = ws_stream
+                    .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
+                    .await;
+            },
+            Some(msg) = receiver.recv() => {
+                match msg {
+                    WsMsg::Text(msg) => {
+                        if let Err(_) = ws_stream.send(Message::text(msg)).await {
+                            break;
                         }
-                    }
-                    recv_response = false;
-                    ping_data += 1;
-                    ping_time = SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap_or(Duration::default())
-                        .as_millis();
-                    let _ = ws_stream
-                        .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
-                        .await;
-                },
-                Some(msg) = receiver.recv() => {
-                    match msg {
-                        WsMsg::Text(msg) => {
-                            if let Err(_) = ws_stream.send(Message::text(msg)).await {
-                                break;
-                            }
-                        },
-                        WsMsg::Binary(msg) => {
-                            if let Err(_) = ws_stream.send(Message::binary(msg)).await {
-                                break;
-                            }
-                        },
-                        WsMsg::Close => {
-                            if let Err(_) = ws_stream.close(None, None).await {
-                                break;
-                            }
-                        },
-                    }
-                },
-                msg = ws_stream.next() => {
-                    match msg {
-                        Some(msg) => match msg{
-                            Ok(msg) => {
-                                if msg.is_text() {
-                                    biz.on_text_message(msg.as_text().expect("should be text")).await;
-                                } else if msg.is_binary() {
-                                    biz.on_binary_message(msg.as_data()).await;
-                                } else if msg.is_ping() {
-                                    let _ = ws_stream.send(Message::pong(msg.as_data().clone())).await;
-                                } else if msg.is_pong() {
-                                    let ping_data = ping_data.to_be_bytes();
-                                    let recv_data = msg.as_data();
-                                    if equals(&ping_data, recv_data) && !recv_response {
-                                        let cur_time = SystemTime::now()
-                                            .duration_since(UNIX_EPOCH)
-                                            .unwrap_or(Duration::default())
-                                            .as_millis();
-                                        let delay = cur_time - ping_time;
-                                        *ping.write().await = delay as u64;
-                                        recv_response = true;
-                                        timeout_count = 0;
-                                    }
+                    },
+                    WsMsg::Binary(msg) => {
+                        if let Err(_) = ws_stream.send(Message::binary(msg)).await {
+                            break;
+                        }
+                    },
+                    WsMsg::Close => {
+                        if let Err(_) = ws_stream.close(None, None).await {
+                            break;
+                        }
+                    },
+                }
+            },
+            msg = ws_stream.next() => {
+                match msg {
+                    Some(msg) => match msg{
+                        Ok(msg) => {
+                            if msg.is_text() {
+                                biz.on_text_message(msg.as_text().expect("should be text")).await;
+                            } else if msg.is_binary() {
+                                biz.on_binary_message(msg.as_data()).await;
+                            } else if msg.is_ping() {
+                                let _ = ws_stream.send(Message::pong(msg.as_data().clone())).await;
+                            } else if msg.is_pong() {
+                                let ping_data = ping_data.to_be_bytes();
+                                let recv_data = msg.as_data();
+                                if equals(&ping_data, recv_data) && !recv_response {
+                                    let cur_time = SystemTime::now()
+                                        .duration_since(UNIX_EPOCH)
+                                        .unwrap_or(Duration::default())
+                                        .as_millis();
+                                    let delay = cur_time - ping_time;
+                                    *ping.write().await = delay as u64;
+                                    recv_response = true;
+                                    timeout_count = 0;
                                 }
-                            },
-                            Err(_) => break,
+                            }
                         },
-                        None => break,
-                    }
+                        Err(_) => break,
+                    },
+                    None => break,
                 }
             }
         }
+    }
 
-        biz.on_close().await;
-    });
+    biz.on_close().await;
 }
 
 fn query_websocket_client(
