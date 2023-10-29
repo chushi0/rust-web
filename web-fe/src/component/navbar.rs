@@ -39,6 +39,11 @@ pub fn NavBar(props: &NavBarProps) -> Html {
             title: "Dev-Tools",
             href: crate::Route::DevTools,
         },
+        Item::Item {
+            id: "totp",
+            title: "TOTP",
+            href: crate::Route::Totp,
+        },
     ];
 
     html! {

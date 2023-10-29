@@ -5,6 +5,7 @@ version = "0.1.0"
 
 [dependencies]
 anyhow = "1.0"
+base32 = "0.4.0"
 gloo-net = "0.2"
 gloo-timers = "0.2.6"
 instant = {version = "0.1.12", features = ["wasm-bindgen"]}
@@ -12,6 +13,7 @@ js-sys = "0.3.64"
 log = "0.4.6"
 serde = {version = "1.0", features = ["derive"]}
 time = {version = "0.3.21", features = ["serde", "formatting"]}
+totp-lite = "2.0.0"
 wasm-bindgen = "0.2.87"
 wasm-bindgen-futures = "0.4"
 wasm-logger = "0.2.0"
