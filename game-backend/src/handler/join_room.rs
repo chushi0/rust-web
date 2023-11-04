@@ -5,6 +5,8 @@ use crate::common::room;
 
 pub async fn handle(req: Request<JoinRoomRequest>) -> Result<Response<JoinRoomResponse>, Status> {
     let req = req.get_ref();
+    #[cfg(debug_assertions)]
+    log::info!("join_room_request: {req:?}");
 
     check_request(req)?;
 
@@ -13,6 +15,9 @@ pub async fn handle(req: Request<JoinRoomRequest>) -> Result<Response<JoinRoomRe
         JoinRoomStrategy::Join => join_room(req).await,
         JoinRoomStrategy::Mate => mate_room(req).await,
     }?;
+
+    #[cfg(debug_assertions)]
+    log::info!("join_room_response: {result:?}");
 
     Ok(Response::new(result))
 }
