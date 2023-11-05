@@ -38,6 +38,7 @@ pub async fn upload_file(path: &str, file: Vec<u8>, mimetype: &str) -> Result<()
 
     let signature = hmacsha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
     let signature = base64::engine::general_purpose::STANDARD.encode(&signature);
+    let signature = urlencoding::encode(&signature);
 
     let url = format!(
         "https://{}/{}?OSSAccessKeyId={}&Expires={}&Signature={}",
