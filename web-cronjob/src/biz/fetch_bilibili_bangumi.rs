@@ -43,6 +43,8 @@ pub async fn handle() -> Result<()> {
         }
     }
 
+    tx.commit().await?;
+
     if fetch_error {
         Err(anyhow!(
             "fetch-bilibili-bangumi error, see logs to see detali"
