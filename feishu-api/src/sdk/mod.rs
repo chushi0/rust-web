@@ -65,6 +65,33 @@ pub async fn send_card_message(
     Ok(())
 }
 
+pub async fn send_card_message_to_chat(
+    chat_id: &str,
+    card_id: &'static str,
+    params: HashMap<String, String>,
+) -> Result<()> {
+    let content = serde_json::to_string(&CardMessage {
+        r#type: "template",
+        data: CardMessageData {
+            template_id: card_id,
+            template_variable: params,
+        },
+    })?;
+
+    api::message::send_message(
+        api::message::ReceiveIdType::ChatId,
+        SendMessageRequest {
+            receive_id: chat_id.to_string(),
+            msg_type: "interactive".to_string(),
+            content,
+            uuid: None,
+        },
+    )
+    .await?;
+
+    Ok(())
+}
+
 #[test]
 pub fn test_send_plain_message() {
     tokio::runtime::Builder::new_current_thread()
