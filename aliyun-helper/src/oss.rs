@@ -7,8 +7,12 @@ use std::time::{Duration, SystemTime};
 pub fn get_download_url(path: &str, expire_at: u64) -> String {
     let bucket_host = include_str!("../config/bucket_host.txt");
     let access_key_id = include_str!("../config/access_key_id.txt");
+    let bucket_name = include_str!("../config/bucket_name.txt");
+    let access_key_secret = include_str!("../config/access_key_secret.txt");
+    let plain_message = format!("GET\n\n\n{}\n/{}/{}", expire_at, bucket_name, path);
 
-    let signature = url_signature("GET", expire_at, &path);
+    let signature = hmacsha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
+    let signature = base64::engine::general_purpose::STANDARD.encode(&signature);
     let signature = urlencoding::encode(&signature);
 
     format!(
@@ -17,15 +21,23 @@ pub fn get_download_url(path: &str, expire_at: u64) -> String {
     )
 }
 
-pub async fn upload_file(path: &str, file: Vec<u8>) -> Result<()> {
+pub async fn upload_file(path: &str, file: Vec<u8>, mimetype: &str) -> Result<()> {
     let bucket_host = include_str!("../config/bucket_host.txt");
     let access_key_id = include_str!("../config/access_key_id.txt");
+    let bucket_name = include_str!("../config/bucket_name.txt");
+    let access_key_secret = include_str!("../config/access_key_secret.txt");
 
     let expire_at = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .add(Duration::from_secs(3600 * 2))
         .as_secs();
-    let signature = url_signature("PUT", expire_at, &path);
+    let plain_message = format!(
+        "PUT\n\n{}\n{}\n/{}/{}",
+        mimetype, expire_at, bucket_name, path
+    );
+
+    let signature = hmacsha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
+    let signature = base64::engine::general_purpose::STANDARD.encode(&signature);
 
     let url = format!(
         "https://{}/{}?OSSAccessKeyId={}&Expires={}&Signature={}",
@@ -34,6 +46,7 @@ pub async fn upload_file(path: &str, file: Vec<u8>) -> Result<()> {
 
     let code = reqwest::Client::new()
         .put(url)
+        .header("Content-Type", mimetype)
         .body(file)
         .send()
         .await?
@@ -44,15 +57,4 @@ pub async fn upload_file(path: &str, file: Vec<u8>) -> Result<()> {
     } else {
         Err(anyhow!("status not 200/201/202: {code}"))
     }
-}
-
-fn url_signature(verb: &str, expire_at: u64, path: &str) -> String {
-    let bucket_name = include_str!("../config/bucket_name.txt");
-    let access_key_secret = include_str!("../config/access_key_secret.txt");
-    let plain_message = format!("{}\n\n\n{}\n/{}/{}", verb, expire_at, bucket_name, path);
-
-    let signature = hmacsha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
-    let signature = base64::engine::general_purpose::STANDARD.encode(&signature);
-
-    signature
 }
