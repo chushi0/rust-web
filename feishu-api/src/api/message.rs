@@ -1,4 +1,8 @@
 use anyhow::{anyhow, Result};
+use reqwest::{
+    header::{HeaderMap, HeaderValue},
+    multipart::{Form, Part},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug)]
@@ -22,6 +26,18 @@ pub struct SendMessageRequest {
 pub struct SendMessageResponse {
     pub code: i32,
     pub msg: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UploadImageResponse {
+    pub code: i32,
+    pub msg: String,
+    pub data: UploadImageResponsePayload,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct UploadImageResponsePayload {
+    pub image_key: String,
 }
 
 impl From<ReceiveIdType> for &'static str {
@@ -54,6 +70,39 @@ pub async fn send_message(
         .header("Content-Type", "application/json")
         .header("Authorization", token)
         .body(serde_json::to_vec(&req)?)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    if resp.code != 0 {
+        return Err(anyhow!(
+            "code is not zero: {}, msg: {}",
+            resp.code,
+            resp.msg
+        ));
+    }
+
+    Ok(resp)
+}
+
+pub async fn upload_image(image: Vec<u8>) -> Result<UploadImageResponse> {
+    let token = crate::get_token().await.ok_or(anyhow!("get token fail"))?;
+    let token = format!("Bearer {token}");
+    println!("token: {token}");
+
+    let mut image_header = HeaderMap::new();
+    image_header.insert("Content-Type", HeaderValue::from_static("image/png"));
+    let form = Form::new().text("image_type", "message").part(
+        "image",
+        Part::bytes(image).file_name("image").headers(image_header),
+    );
+
+    let client = reqwest::Client::new();
+    let resp: UploadImageResponse = client
+        .post("https://open.feishu.cn/open-apis/im/v1/images")
+        .header("Authorization", token)
+        .multipart(form)
         .send()
         .await?
         .json()

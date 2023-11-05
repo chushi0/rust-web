@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 use tokio::sync::RwLock;
 
-pub(crate) mod api;
+pub mod api;
 pub mod sdk;
 
 #[derive(Debug)]

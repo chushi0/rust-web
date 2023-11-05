@@ -1,17 +1,20 @@
 use anyhow::Result;
 use sqlx::{Connection, Sqlite, SqliteConnection};
 
+pub mod bilibili;
 pub mod event;
 pub mod mc_config;
 pub enum RDS {
     Event,
     McConfig,
+    Bilibili,
 }
 
 fn rds_name(rds: RDS) -> &'static str {
     match rds {
         RDS::Event => "event",
         RDS::McConfig => "mc-config",
+        RDS::Bilibili => "bilibili",
     }
 }
 

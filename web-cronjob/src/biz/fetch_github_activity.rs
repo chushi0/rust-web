@@ -1,8 +1,6 @@
-use std::time::{SystemTime, UNIX_EPOCH};
-
-use anyhow::Result;
-
 use crate::api::github::activity::{list_user_public_events, EventPayload};
+use anyhow::Result;
+use std::time::{SystemTime, UNIX_EPOCH};
 use web_db::event::{
     get_last_github_activity_event, insert_display_event, insert_github_activity_event,
     DisplayEvent, GithubActivityEvent,
