@@ -107,7 +107,7 @@ async fn fetch_and_notify(
             "copy",
             "-c:a",
             "aac",
-            "/tmp/bilibili-output",
+            "/tmp/bilibili-output.mp4",
         ])
         .spawn()?
         .wait()?
@@ -119,7 +119,7 @@ async fn fetch_and_notify(
     log::info!("video & audio converted");
 
     let mut video_data = Vec::new();
-    tokio::fs::File::open("/tmp/bilibili-output")
+    tokio::fs::File::open("/tmp/bilibili-output.mp4")
         .await?
         .read_to_end(&mut video_data)
         .await?;
