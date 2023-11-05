@@ -132,7 +132,7 @@ async fn fetch_and_notify(
         "rust-web/bili-video/{}.{}.{}.mp4",
         bangumi_watch.ssid, ep.aid, expire_at
     );
-    aliyun_helper::oss::upload_file(&oss_key, video_data).await?;
+    aliyun_helper::oss::upload_file(&oss_key, video_data, "video/mp4").await?;
     let preview_url = aliyun_helper::oss::get_download_url(&oss_key, expire_at);
     log::info!("upload oss, url={preview_url}");
 
