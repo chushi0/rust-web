@@ -81,18 +81,18 @@ async fn fetch_and_notify(
         url.dash.audio[0].base_url
     );
 
-    // tokio::try_join!(
-    //     download_file_and_save(
-    //         "/tmp/bilibili-video",
-    //         &url.dash.video[0].base_url,
-    //         &url.dash.video[0].backup_url,
-    //     ),
-    //     download_file_and_save(
-    //         "/tmp/bilibili-audio",
-    //         &url.dash.audio[0].base_url,
-    //         &url.dash.audio[0].backup_url,
-    //     )
-    // )?;
+    tokio::try_join!(
+        download_file_and_save(
+            "/tmp/bilibili-video",
+            &url.dash.video[0].base_url,
+            &url.dash.video[0].backup_url,
+        ),
+        download_file_and_save(
+            "/tmp/bilibili-audio",
+            &url.dash.audio[0].base_url,
+            &url.dash.audio[0].backup_url,
+        )
+    )?;
 
     log::info!("video & audio downloaded");
 
