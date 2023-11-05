@@ -181,9 +181,9 @@ async fn fetch_and_notify(client: &Client, bangumi_watch: &BangumiWatch) -> Resu
         params.insert("ep_title".to_string(), ep.share_copy.clone());
         params.insert("cover".to_string(), cover_key);
         params.insert("url".to_string(), preview_url);
-        feishu_api::sdk::send_card_message_to_chat(
-            include_str!("../../config/bangumi_group_id.txt"),
-            "ctp_AA85tBfL0sMR",
+        feishu_api::sdk::send_card_message_to_hook(
+            include_str!("../../config/bangumi_chat_hook.txt"),
+            include_str!("../../config/bangumi_card_template.json"),
             params,
         )
         .await?;

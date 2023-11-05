@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::api::{self, message::SendMessageRequest};
+use crate::api::{
+    self,
+    message::{SendMessageRequest, SendMessageToHookRequest},
+};
 use anyhow::Result;
 use serde::Serialize;
 
@@ -67,7 +70,7 @@ pub async fn send_card_message(
 
 pub async fn send_card_message_to_chat(
     chat_id: &str,
-    card_id: &'static str,
+    card_id: &str,
     params: HashMap<String, String>,
 ) -> Result<()> {
     let content = serde_json::to_string(&CardMessage {
@@ -85,6 +88,28 @@ pub async fn send_card_message_to_chat(
             msg_type: "interactive".to_string(),
             content,
             uuid: None,
+        },
+    )
+    .await?;
+
+    Ok(())
+}
+
+pub async fn send_card_message_to_hook(
+    hook_id: &str,
+    card_template: &str,
+    params: HashMap<String, String>,
+) -> Result<()> {
+    let mut card = card_template.to_string();
+    for (k, v) in params {
+        card = card.replace(&format!("${{{}}}", k), &v);
+    }
+
+    api::message::send_message_to_webhook(
+        hook_id,
+        SendMessageToHookRequest {
+            msg_type: "interactive".to_string(),
+            card: serde_json::from_str(&card)?,
         },
     )
     .await?;

@@ -23,6 +23,12 @@ pub struct SendMessageRequest {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SendMessageToHookRequest {
+    pub msg_type: String,
+    pub card: serde_json::Value,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SendMessageResponse {
     pub code: i32,
     pub msg: String,
@@ -60,6 +66,37 @@ pub async fn send_message(
         "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type={}",
         Into::<&'static str>::into(receive_id_type)
     );
+    let token = crate::get_token().await.ok_or(anyhow!("get token fail"))?;
+    let token = format!("Bearer {token}");
+    println!("token: {token}");
+
+    let client = reqwest::Client::new();
+    let resp: SendMessageResponse = client
+        .post(url)
+        .header("Content-Type", "application/json")
+        .header("Authorization", token)
+        .body(serde_json::to_vec(&req)?)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    if resp.code != 0 {
+        return Err(anyhow!(
+            "code is not zero: {}, msg: {}",
+            resp.code,
+            resp.msg
+        ));
+    }
+
+    Ok(resp)
+}
+
+pub async fn send_message_to_webhook(
+    hook_id: &str,
+    req: SendMessageToHookRequest,
+) -> Result<SendMessageResponse> {
+    let url = format!("https://open.feishu.cn/open-apis/bot/v2/hook/{}", hook_id);
     let token = crate::get_token().await.ok_or(anyhow!("get token fail"))?;
     let token = format!("Bearer {token}");
     println!("token: {token}");
