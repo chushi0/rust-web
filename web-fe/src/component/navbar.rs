@@ -18,10 +18,6 @@ pub fn NavBar(props: &NavBarProps) -> Html {
             title: "动态",
             href: crate::Route::Home,
         },
-        // Item::Menu {
-        //     title: "实验",
-        //     children: Rc::new(vec![]),
-        // },
         Item::Menu {
             title: "MC",
             children: Rc::new(vec![Item::Item {
@@ -29,6 +25,24 @@ pub fn NavBar(props: &NavBarProps) -> Html {
                 title: "进度查看",
                 href: crate::Route::McAdvancement,
             }]),
+        },
+        Item::Menu {
+            title: "游戏",
+            children: Rc::new(vec![Item::Item {
+                id: "game-number-tower",
+                title: "数字爬塔游戏",
+                href: crate::Route::GameNumberTower,
+            }]),
+        },
+        Item::Item {
+            id: "dev-tools",
+            title: "Dev-Tools",
+            href: crate::Route::DevTools,
+        },
+        Item::Item {
+            id: "totp",
+            title: "TOTP",
+            href: crate::Route::Totp,
         },
     ];
 

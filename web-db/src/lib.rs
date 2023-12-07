@@ -1,6 +1,7 @@
 use anyhow::Result;
 use sqlx::{Connection, Sqlite, SqliteConnection};
 
+pub mod bilibili;
 pub mod event;
 pub mod furuyoni;
 pub mod hearthstone;
@@ -13,6 +14,7 @@ pub enum RDS {
     Furuyoni,
     Hearthstone,
     McConfig,
+    Bilibili,
 }
 
 fn rds_name(rds: RDS) -> &'static str {
@@ -22,6 +24,7 @@ fn rds_name(rds: RDS) -> &'static str {
         RDS::Furuyoni => "furuyoni",
         RDS::Hearthstone => "hearthstone",
         RDS::McConfig => "mc-config",
+        RDS::Bilibili => "bilibili",
     }
 }
 

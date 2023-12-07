@@ -7,6 +7,8 @@ pub mod biz;
 enum ProgramArgs {
     FetchGithubActivity,
     RefreshMcAdvancement { path: String, lang: String },
+    FetchBilibiliBangumi,
+    FetchBilibiliBangumiAll { ssid: i32 },
 }
 
 #[tokio::main]
@@ -24,9 +26,13 @@ async fn main() {
         ProgramArgs::RefreshMcAdvancement { path, lang } => {
             biz::refresh_mc_advancement::handle(&path, &lang).await
         }
+        ProgramArgs::FetchBilibiliBangumi => biz::fetch_bilibili_bangumi::handle().await,
+        ProgramArgs::FetchBilibiliBangumiAll { ssid } => {
+            biz::fetch_bilibili_bangumi::handle_all(ssid).await
+        }
     };
 
     if let Err(e) = result {
-        log::error!("execute cronjob fail: {e}")
+        log::error!("execute cronjob fail: {e}");
     }
 }
