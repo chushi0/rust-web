@@ -111,7 +111,7 @@ pub enum SpellEffect {
     BackUse { effects: CardEffects },
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum Target {
     SelfMinion,
     SelfHero,
@@ -141,12 +141,12 @@ pub enum CardEffect {
     // 造成伤害
     DealDamage {
         target: Target,
-        damage: i32,
+        damage: i64,
     },
     // 抽牌
     DrawCard {
         target: Target,
-        count: i32,
+        count: u32,
     },
     // 获得buff
     Buff {
@@ -163,13 +163,12 @@ pub enum CardEffect {
     },
     // 切换前后排
     SwapFrontBack {
-        swap_team: bool,
-        swap_opposite: bool,
+        target: Target,
     },
     // 恢复生命值
     RecoverHealth {
         target: Target,
-        hp: i32,
+        hp: i64,
     },
     // 取消通常法术效果
     PreventNormalEffect,
