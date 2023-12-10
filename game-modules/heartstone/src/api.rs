@@ -1,9 +1,6 @@
-use datastructure::SyncHandle;
-
 use crate::{
-    game::{Game, TurnAction},
+    game::Game,
     model::{Buff, Camp, Card, Fightline, Minion, Target},
-    player::Player,
 };
 use std::fmt::Debug;
 
@@ -34,6 +31,12 @@ pub trait GameNotifier: Debug + Send + Sync {
 
     fn deal_damage(&self, target: Target, damage: i64);
     fn buff(&self, target: Target, buff: Buff);
+}
+
+#[derive(Debug, Clone)]
+pub enum TurnAction {
+    PlayerTurn(u64),
+    SwapFightline,
 }
 
 #[derive(Debug)]

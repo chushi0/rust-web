@@ -5,8 +5,8 @@ pub mod bilibili;
 pub mod event;
 pub mod furuyoni;
 pub mod hearthstone;
-pub mod user;
 pub mod mc_config;
+pub mod user;
 
 pub enum RDS {
     User,
@@ -41,6 +41,10 @@ pub async fn create_connection(rds: RDS) -> Result<SqliteConnection> {
     };
 
     Ok(SqliteConnection::connect(&format!("sqlite://{path}")).await?)
+}
+
+pub async fn create_connection_with_path(path: &str) -> Result<SqliteConnection> {
+    Ok(SqliteConnection::connect(path).await?)
 }
 
 pub async fn begin_tx<'a>(connection: &'a mut SqliteConnection) -> Result<Transaction<'a>> {

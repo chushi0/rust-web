@@ -1,13 +1,13 @@
-use datastructure::SyncHandle;
 use dialoguer::Input;
 use heartstone::{
-    api::{GameNotifier, PlayerDrawCard},
-    game::{Config, Game, PlayerConfig, TurnAction},
-    model::{Camp, Card, CardModel, Fightline, Minion, Target},
-    player::{Player, PlayerBehavior, PlayerTurnAction},
+    api::{GameNotifier, PlayerDrawCard, TurnAction},
+    game::{Config, Game, PlayerConfig},
+    model::{
+        Buff, Camp, Card, CardModel, Damageable, Fightline, HeroTrait, Minion, MinionTrait, Target,
+    },
+    player::{Player, PlayerBehavior, PlayerTrait, PlayerTurnAction},
 };
-use std::{collections::HashMap, sync::Arc};
-use web_db::hearthstone::{CardType, MinionCardInfo};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 #[derive(Debug)]
 struct StdBehavior;
@@ -17,107 +17,266 @@ struct StdNotifier;
 
 #[tokio::main]
 async fn main() {
-    let test_card = Arc::new(CardModel {
-        card: web_db::hearthstone::Card {
-            rowid: 1,
-            code: "".to_string(),
-            name: "".to_string(),
-            card_type: CardType::Minion.into(),
-            mana_cost: 1,
-            derive: false,
-            need_select_target: true,
-            card_info: "".to_string(),
-            create_info: 0,
-            update_time: 0,
-            enable: true,
-        },
-        card_info: web_db::hearthstone::CardInfo {
-            common_card_info: web_db::hearthstone::CommonCardInfo {},
-            special_card_info: web_db::hearthstone::SpecialCardInfo::Minion(MinionCardInfo {
-                attack: 1,
-                health: 1,
-                effects: vec![],
-            }),
-        },
-    });
+    println!("炉石 2V2 SNAPSHOT - 20231210");
+    println!("已完成基本功能开发");
+    println!("卡牌已录入数据库");
+    println!("测试说明：");
+    println!("  - 所有卡牌（非衍生牌）各一张 组成套牌");
+    println!("  - 可代表任意玩家进行行动");
+    println!("  - 可以看到所有玩家的手牌，但不能看到牌库");
+    println!("  - 仅限单机，无法联机，没有 AI");
+    println!("  - 没有输入检查，这意味着您可以透支法力值（无需还款），或选择一个无效的目标");
+    println!("待开发功能：");
+    println!("  - 游戏开始时，选择前后排及起始手牌逻辑");
+    println!("  - 法术伤害+X 标记");
+    println!("  - 随从狂战标记");
+    println!("  - 指定随从出现位置");
+    println!("您可以更改数据库 （heartstone.db）中的卡牌配置来自定义卡牌，具体修改方式见项目 OnePage 文档");
+    println!();
+    println!("** 静待 5 秒后，游戏将自动开始 **");
+    println!();
+    println!();
 
-    let mut card_pool = HashMap::new();
-    card_pool.insert(1, test_card);
+    std::thread::sleep(Duration::from_secs(5));
+
+    // 加载数据库
+    let card_pool = load_card_pool().await;
 
     let config = Config {
         game_notifier: Arc::new(StdNotifier),
-        card_pool,
+        card_pool: card_pool.clone(),
         ..Default::default()
     };
 
     let mut players = Vec::new();
-    for _ in 0..4 {
-        let mut deck = HashMap::new();
-        deck.insert(1, 5);
+    for i in 0..4 {
+        // 牌库是每张牌（衍生牌除外）各一张
+        let deck = card_pool
+            .iter()
+            .filter(|(_, model)| !model.card.derive)
+            .map(|(id, _)| (*id, 1))
+            .collect();
+
+        let behavior = Arc::new(StdBehavior) as Arc<dyn PlayerBehavior>;
+
         players.push(PlayerConfig {
-            behavior: Arc::new(StdBehavior),
+            behavior,
             deck,
             ..Default::default()
         })
     }
 
-    let result = Game::new(config, players).run().await;
-    println!("result: {:?}", result);
+    Game::new(config, players).await.run().await;
+    println!("游戏结束");
+
+    let s: String = Input::new()
+        .with_prompt("输入任意内容退出")
+        .interact_text()
+        .expect("input anything to exit");
+    _ = s;
+}
+
+async fn load_card_pool() -> HashMap<i64, Arc<CardModel>> {
+    let mut db = web_db::create_connection_with_path("heartstone.db")
+        .await
+        .unwrap();
+    let mut tx = web_db::begin_tx(&mut db).await.unwrap();
+
+    let cards = web_db::hearthstone::get_all_cards(&mut tx).await.unwrap();
+
+    let mut map = HashMap::new();
+    for card in cards {
+        let card_info = serde_json::from_str(&card.card_info).unwrap();
+        map.insert(card.rowid, Arc::new(CardModel { card, card_info }));
+    }
+
+    map
 }
 
 #[async_trait::async_trait]
+#[allow(unused_variables)]
 impl GameNotifier for StdNotifier {
     async fn flush(&self, game: &Game) {
-        println!("flush")
+        println!("========================================");
+        println!("当前游戏状态：");
+        println!("----------------------------------------");
+        for player in game.players() {
+            println!("玩家 [{}]：", player.get_hero().await.uuid().await);
+            println!("  法力值：{}", player.mana().await);
+            println!("  生命值：{}", player.get_hero().await.hp().await);
+            println!("  阵营：{}", camp_desc(player.camp().await));
+            println!(
+                "  位置：{}",
+                fightline_desc(player.get_hero().await.fightline().await)
+            );
+            println!("  手牌：");
+            let mut index = 0;
+            for card in player.hand_cards().await {
+                let model = card.get().await.model().clone();
+                println!("    #{index} {}", model.card.name);
+                index += 1;
+            }
+        }
+        println!("----------------------------------------");
+        for camp in [Camp::A, Camp::B] {
+            println!("阵营 {} 随从：", camp_desc(camp));
+            let minions = game.battlefield_minions(camp).await;
+            let mut index = 0;
+            for minion in minions {
+                let model = minion.get().await.model().clone();
+                println!(
+                    "  #{index} {} {}/{}",
+                    model.card.name,
+                    minion.atk().await,
+                    minion.hp().await
+                );
+                index += 1;
+            }
+        }
+
+        println!("========================================");
     }
 
     fn new_turn(&self, current_turn: TurnAction) {
-        println!("New Turn: {current_turn:?}")
+        match current_turn {
+            TurnAction::PlayerTurn(player) => {
+                println!("#################### 玩家 [{player}] 的回合 ####################")
+            }
+            TurnAction::SwapFightline => {
+                println!("#################### 交换前后排回合 ####################")
+            }
+        }
+        std::thread::sleep(Duration::from_secs(1));
     }
 
     fn player_mana_change(&self, player: u64, mana: i32) {
-        println!("player mana change: {player:?}, mana: {mana}")
+        println!("玩家 [{player}] 的法力值变为 {mana}")
     }
     fn player_draw_card(&self, player: u64, card: PlayerDrawCard) {
-        println!("player draw card: {player:?}, card: {card:?}")
+        match card {
+            PlayerDrawCard::Draw(card) => {
+                println!("玩家 [{player}] 抽到了 {}", card.model().card.name)
+            }
+            PlayerDrawCard::Fire(card) => {
+                println!(
+                    "玩家 [{player}] 抽到了 {}，但因为手牌已满，这张牌爆掉了",
+                    card.model().card.name
+                )
+            }
+            PlayerDrawCard::Tired(tried) => {
+                println!("玩家 [{player}] 抽牌，但因为牌库已空，受到了 {tried} 点疲劳伤害");
+            }
+        }
     }
     fn player_use_card(&self, player: u64, card: Card, cost_mana: i32) {
-        println!("player use card: {player:?}, card: {card:?} cost_mana: {cost_mana}")
+        println!(
+            "玩家 [{player}] 消耗 {cost_mana} 点法力值，使用了 [{}]",
+            card.model().card.name
+        )
     }
-    fn player_card_effect_end(&self) {
-        println!("player card effect end")
-    }
+    fn player_card_effect_end(&self) {}
     fn player_swap_fightline(&self, player: u64, new_fightline: Fightline) {
-        println!("player swap fightline: {player:?}, new_fightline: {new_fightline:?}")
+        println!(
+            "玩家 [{player}] 交换了前后排，当前位置为 {}",
+            fightline_desc(new_fightline)
+        )
     }
 
     fn minion_summon(&self, minion: Minion, camp: Camp) {
-        println!("minion summon: {minion:?}, camp: {camp:?}")
+        println!(
+            "随从 [{}] 加入了阵营 [{}]，身材为 {}/{}，随从ID为 [{}]",
+            minion.model().card.name,
+            camp_desc(camp),
+            minion.atk(),
+            minion.hp(),
+            minion.uuid()
+        )
     }
     fn minion_battlecry(&self, minion: Minion) {
-        println!("minion battlecry: {minion:?}")
+        println!(
+            "随从 [{}:{}] 战吼效果发动",
+            minion.uuid(),
+            minion.model().card.name
+        )
     }
     fn minion_attack(&self, minion: Minion, target: Target) {
-        println!("minion attack: {minion:?}, target: {target:?}")
+        match target {
+            Target::Minion(target_minion) => println!(
+                "随从 [{}:{}] 攻击了 随从 [{}]",
+                minion.uuid(),
+                minion.model().card.name,
+                target_minion,
+            ),
+            Target::Hero(target_hero) => println!(
+                "随从 [{}:{}] 攻击了 英雄 [{}]",
+                minion.uuid(),
+                minion.model().card.name,
+                target_hero,
+            ),
+        }
     }
     fn minion_death(&self, minion: Minion) {
-        println!("minion death: {minion:?}")
+        println!("随从 [{}:{}] 死亡", minion.uuid(), minion.model().card.name)
     }
     fn minion_deathrattle(&self, minion: Minion) {
-        println!("minion deathrattle: {minion:?}")
+        println!(
+            "随从 [{}:{}] 亡语效果发动",
+            minion.uuid(),
+            minion.model().card.name
+        )
     }
 
     fn deal_damage(&self, target: Target, damage: i64) {
-        println!("deal damage: {target:?}, damage: {damage}")
+        if damage > 0 {
+            match target {
+                Target::Minion(target_minion) => {
+                    println!("随从 [{}] 受到伤害，生命值 -{}", target_minion, damage)
+                }
+                Target::Hero(target_hero) => {
+                    println!("英雄 [{}] 受到伤害生命值 -{}", target_hero, damage)
+                }
+            }
+        } else if damage < 0 {
+            match target {
+                Target::Minion(target_minion) => {
+                    println!("随从 [{}] 受到治疗生命值 +{}", target_minion, -damage)
+                }
+                Target::Hero(target_hero) => {
+                    println!("英雄 [{}] 受到治疗生命值 +{}", target_hero, -damage)
+                }
+            }
+        }
+    }
+    fn buff(&self, target: Target, buff: Buff) {
+        match target {
+            Target::Minion(target_minion) => {
+                println!(
+                    "随从 [{}] 获得 Buff {}/{}",
+                    target_minion,
+                    has_sign_num(buff.atk_boost()),
+                    has_sign_num(buff.hp_boost())
+                )
+            }
+            Target::Hero(target_hero) => {
+                println!(
+                    "英雄 [{}] 获得 Buff {}/{}",
+                    target_hero,
+                    has_sign_num(buff.atk_boost()),
+                    has_sign_num(buff.hp_boost())
+                )
+            }
+        }
     }
 }
 
 #[async_trait::async_trait]
 impl PlayerBehavior for StdBehavior {
+    async fn assign_uuid(&self, uuid: u64) {}
+
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
         loop {
             let turn_action_type: u8 = Input::new()
-                .with_prompt("TurnAction(1: PlayCard, 2: MinionAttack, 0: EndTurn) > ")
+                .with_prompt("输入回合指令(1: 使用卡牌, 2: 随从攻击, 0: 结束回合) > ")
                 .interact_text()
                 .expect("input turn action type");
 
@@ -125,7 +284,7 @@ impl PlayerBehavior for StdBehavior {
                 0 => return PlayerTurnAction::EndTurn,
                 1 => {
                     let hand_index = Input::new()
-                        .with_prompt(" hand_index > ")
+                        .with_prompt(" 输入牌序号(从0开始) > ")
                         .interact_text()
                         .expect("input hand_index");
 
@@ -135,7 +294,7 @@ impl PlayerBehavior for StdBehavior {
                 }
                 2 => {
                     let attacker = Input::new()
-                        .with_prompt(" attacker > ")
+                        .with_prompt(" 输入攻击随从ID > ")
                         .interact_text()
                         .expect("input attacker");
 
@@ -154,16 +313,16 @@ impl PlayerBehavior for StdBehavior {
 fn input_target() -> Option<Target> {
     loop {
         let option: u8 = Input::new()
-            .with_prompt(" target(0: None, 1: Minion, 2: Hero) > ")
+            .with_prompt(" 输入目标类型(0: 无, 1: 随从, 2: 英雄) > ")
             .interact_text()
             .expect("input target");
         match option {
             0 => return None,
             v if v == 1 || v == 2 => {
                 let id: u64 = Input::new()
-                    .with_prompt(" target(0: None, 1: Minion, 2: Hero) > ")
+                    .with_prompt(" 输入目标ID > ")
                     .interact_text()
-                    .expect("input target");
+                    .expect("input target uuid");
                 if v == 1 {
                     return Some(Target::Minion(id));
                 } else {
@@ -172,5 +331,27 @@ fn input_target() -> Option<Target> {
             }
             _ => continue,
         }
+    }
+}
+
+fn fightline_desc(fightline: Fightline) -> &'static str {
+    match fightline {
+        Fightline::Front => "前排",
+        Fightline::Back => "后排",
+    }
+}
+
+fn camp_desc(camp: Camp) -> &'static str {
+    match camp {
+        Camp::A => "A",
+        Camp::B => "B",
+    }
+}
+
+fn has_sign_num(n: i32) -> String {
+    if n < 0 {
+        format!("{n}")
+    } else {
+        format!("+{n}")
     }
 }

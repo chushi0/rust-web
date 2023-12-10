@@ -172,6 +172,8 @@ dependencies = [
  "datastructure",
  "dialoguer",
  "heartstone",
+ "serde",
+ "serde_json",
  "tokio",
  "web-db",
 ]

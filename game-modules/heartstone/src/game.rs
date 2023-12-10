@@ -1,5 +1,5 @@
 use crate::{
-    api::{GameNotifier, NopGameNotifier, PlayerDrawCard},
+    api::{self, GameNotifier, NopGameNotifier, PlayerDrawCard},
     interpreter::{has_event_type, interpreter, EventType},
     model::{
         Battlefield, BattlefieldTrait, Buff, Buffable, Camp, Card, CardModel, CardPool, Damageable,
@@ -73,7 +73,7 @@ pub enum TurnAction {
 }
 
 impl Game {
-    pub fn new(config: Config, players: Vec<PlayerConfig>) -> Self {
+    pub async fn new(config: Config, players: Vec<PlayerConfig>) -> Self {
         assert!(
             players.len() == 4,
             "player count should be 4, but it's {}",
@@ -124,7 +124,8 @@ impl Game {
                     Camp::A,
                     Fightline::Back,
                     &mut rng,
-                ),
+                )
+                .await,
                 Player::new(
                     uuid_increase.gen(),
                     &card_pool,
@@ -132,7 +133,8 @@ impl Game {
                     Camp::B,
                     Fightline::Back,
                     &mut rng,
-                ),
+                )
+                .await,
                 Player::new(
                     uuid_increase.gen(),
                     &card_pool,
@@ -140,7 +142,8 @@ impl Game {
                     Camp::A,
                     Fightline::Front,
                     &mut rng,
-                ),
+                )
+                .await,
                 Player::new(
                     uuid_increase.gen(),
                     &card_pool,
@@ -148,7 +151,8 @@ impl Game {
                     Camp::B,
                     Fightline::Front,
                     &mut rng,
-                ),
+                )
+                .await,
             ]
         };
 
@@ -205,7 +209,12 @@ impl Game {
         self.turn += 1;
         let current_turn: &TurnAction = &self.turn_actions;
         let current_turn = current_turn.clone();
-        self.game_notifier.new_turn(current_turn.clone());
+        self.game_notifier.new_turn(match &current_turn {
+            TurnAction::PlayerTurn(player) => {
+                api::TurnAction::PlayerTurn(player.get_hero().await.uuid().await)
+            }
+            TurnAction::SwapFightline => api::TurnAction::SwapFightline,
+        });
         log::info!("run turn: #{} {current_turn:?}", self.turn);
         match current_turn {
             TurnAction::PlayerTurn(player) => self.player_turn(player).await,
@@ -625,5 +634,16 @@ impl Game {
             }
             None => {}
         };
+    }
+}
+
+impl Game {
+    pub fn players(&self) -> Vec<SyncHandle<Player>> {
+        self.players.clone()
+    }
+
+    pub async fn battlefield_minions(&self, camp: Camp) -> Vec<SyncHandle<Minion>> {
+        let battlefield = self.get_battlefield(camp).await;
+        battlefield.minions().await
     }
 }

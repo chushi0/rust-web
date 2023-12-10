@@ -10,6 +10,8 @@ use std::{
 
 #[async_trait::async_trait]
 pub trait PlayerBehavior: Debug + Send + Sync {
+    async fn assign_uuid(&self, uuid: u64);
+
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction;
 }
 
@@ -64,6 +66,8 @@ pub trait PlayerTrait {
     async fn cost_mana(&mut self, mana_cost: i32);
 
     async fn draw_card(&mut self) -> DrawCardResult;
+
+    async fn hand_cards(&self) -> Vec<SyncHandle<Card>>;
 }
 
 #[async_trait::async_trait]
@@ -140,10 +144,14 @@ impl PlayerTrait for SyncHandle<Player> {
             }
         }
     }
+
+    async fn hand_cards(&self) -> Vec<SyncHandle<Card>> {
+        self.get().await.hand.cards().await
+    }
 }
 
 impl Player {
-    pub fn new<Rng: rand::Rng>(
+    pub async fn new<Rng: rand::Rng>(
         hero_uuid: u64,
         card_pool: &CardPool,
         config: PlayerConfig,
@@ -155,6 +163,8 @@ impl Player {
         let hero = Hero::new(hero_uuid, config.max_hero_hp, fightline);
         let hand = Hand::new();
         let deck = Deck::new(card_pool, config.deck, rng);
+
+        behavior.assign_uuid(hero_uuid).await;
 
         let player = Player {
             camp,
@@ -195,6 +205,8 @@ impl SocketPlayerBehavior {
 
 #[async_trait::async_trait]
 impl PlayerBehavior for SocketPlayerBehavior {
+    async fn assign_uuid(&self, uuid: u64) {}
+
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
         self.turn_action_channel.increase_version().await;
         self.turn_action_channel
@@ -207,6 +219,8 @@ impl PlayerBehavior for SocketPlayerBehavior {
 
 #[async_trait::async_trait]
 impl PlayerBehavior for AIPlayerBehavior {
+    async fn assign_uuid(&self, uuid: u64) {}
+
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
         PlayerTurnAction::EndTurn
     }

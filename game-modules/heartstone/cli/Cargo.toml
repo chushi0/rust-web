@@ -10,5 +10,7 @@ async-trait = "0.1.74"
 datastructure = {path = "../../../datastructure"}
 dialoguer = "0.11.0"
 heartstone = {path = ".."}
+serde = {version = "1", features = ["derive"]}
+serde_json = "1.0.96"
 tokio = {version = "1.35.0", features = ["full"]}
 web-db = {path = "../../../web-db"}

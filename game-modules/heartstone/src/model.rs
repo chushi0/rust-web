@@ -168,6 +168,14 @@ impl Buff {
             hp_boost,
         }
     }
+
+    pub fn atk_boost(&self) -> i32 {
+        self.atk_boost
+    }
+
+    pub fn hp_boost(&self) -> i32 {
+        self.hp_boost
+    }
 }
 
 #[async_trait::async_trait]
@@ -204,6 +212,22 @@ impl Minion {
         };
 
         SyncHandle::new(minion)
+    }
+
+    pub fn model(&self) -> Arc<CardModel> {
+        self.model.clone()
+    }
+
+    pub fn atk(&self) -> i32 {
+        self.atk
+    }
+
+    pub fn hp(&self) -> i64 {
+        self.hp
+    }
+
+    pub fn uuid(&self) -> u64 {
+        self.uuid
     }
 }
 
@@ -358,6 +382,8 @@ pub trait HandTrait {
     async fn remove(&mut self, index: usize) -> Option<SyncHandle<Card>>;
 
     async fn gain_card(&mut self, card: SyncHandle<Card>) -> bool;
+
+    async fn cards(&self) -> Vec<SyncHandle<Card>>;
 }
 
 #[async_trait::async_trait]
@@ -379,6 +405,10 @@ impl HandTrait for SyncHandle<Hand> {
         } else {
             false
         }
+    }
+
+    async fn cards(&self) -> Vec<SyncHandle<Card>> {
+        self.get().await.cards.clone()
     }
 }
 
