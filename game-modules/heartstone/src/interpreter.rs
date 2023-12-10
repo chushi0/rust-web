@@ -1,7 +1,8 @@
 use crate::{
     game::Game,
     model::{
-        BattlefieldTrait, Camp, Card, CardModel, Fightline, HeroTrait, Minion, MinionTrait, Target,
+        BattlefieldTrait, Buff, Camp, Card, CardModel, Fightline, HeroTrait, Minion, MinionTrait,
+        Target,
     },
     player::{Player, PlayerTrait},
 };
@@ -32,8 +33,15 @@ pub struct PerformResult {
     pub prevent_normal_effect: bool,
 }
 
+pub fn has_event_type(model: Arc<CardModel>, event_type: EventType) -> bool {
+    match query_card_effects(model, event_type) {
+        Some(_data) => true,
+        None => false,
+    }
+}
+
 /// 解释卡牌效果
-/// TODO: BUFF、法术伤害、狂战
+/// TODO: 法术伤害、狂战
 #[async_recursion::async_recursion]
 pub async fn interpreter(
     game: &mut Game,         // 游戏对象，用于将解释的结果作用到游戏上
@@ -80,10 +88,14 @@ pub async fn interpreter(
                 atk_boost,
                 hp_boost,
             } => {
-                todo!()
-                // let buff = Buff::new(self.model.get_model(), buff_type, atk_boost, hp_boost);
-                // self.get_target::<BuffableResult>(target, &mut just_summon)
-                //     .buff(buff)
+                let buff = Buff::new(buff_type, atk_boost, hp_boost);
+                for target in get_minion_target(game, trigger, target, pointer, &just_summon).await
+                {
+                    game.buff(target, buff.clone()).await;
+                }
+                if hp_boost < 0 {
+                    result.need_death_check = true;
+                }
             }
             CardEffect::SummonMinion {
                 target,

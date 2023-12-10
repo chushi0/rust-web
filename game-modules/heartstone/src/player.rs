@@ -2,8 +2,11 @@ use crate::{
     game::{Game, PlayerConfig},
     model::{Camp, Card, CardPool, Deck, DeckTrait, Fightline, Hand, HandTrait, Hero, Target},
 };
-use datastructure::SyncHandle;
-use std::fmt::Debug;
+use datastructure::{SyncChannel, SyncHandle};
+use std::{
+    fmt::Debug,
+    sync::{mpsc::SendError, Arc},
+};
 
 #[async_trait::async_trait]
 pub trait PlayerBehavior: Debug + Send + Sync {
@@ -14,7 +17,7 @@ pub trait PlayerBehavior: Debug + Send + Sync {
 pub struct Player {
     camp: Camp,
 
-    behavior: Box<dyn PlayerBehavior>,
+    behavior: Arc<dyn PlayerBehavior>,
     hero: SyncHandle<Hero>,
     hand: SyncHandle<Hand>,
     deck: SyncHandle<Deck>,
@@ -55,6 +58,8 @@ pub trait PlayerTrait {
     async fn remove_hand_card(&mut self, index: usize) -> Option<SyncHandle<Card>>;
 
     async fn turn_reset_mana(&mut self);
+
+    async fn mana(&self) -> i32;
 
     async fn cost_mana(&mut self, mana_cost: i32);
 
@@ -107,6 +112,10 @@ impl PlayerTrait for SyncHandle<Player> {
             player.max_mana += 1;
         }
         player.mana = player.max_mana as i32;
+    }
+
+    async fn mana(&self) -> i32 {
+        self.get().await.mana
     }
 
     async fn cost_mana(&mut self, mana_cost: i32) {
@@ -162,16 +171,37 @@ impl Player {
     }
 }
 
-#[derive(Debug)]
-pub struct SocketPlayerBehavior {}
+pub struct SocketPlayerBehavior {
+    turn_action_channel: SyncChannel<PlayerTurnAction>,
+}
 
 #[derive(Debug)]
 pub struct AIPlayerBehavior {}
 
+impl SocketPlayerBehavior {
+    pub fn new() -> SocketPlayerBehavior {
+        SocketPlayerBehavior {
+            turn_action_channel: SyncChannel::new(),
+        }
+    }
+
+    pub async fn player_input_turn_action(
+        &self,
+        turn_action: PlayerTurnAction,
+    ) -> Result<(), SendError<PlayerTurnAction>> {
+        self.turn_action_channel.send(turn_action).await
+    }
+}
+
 #[async_trait::async_trait]
 impl PlayerBehavior for SocketPlayerBehavior {
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
-        PlayerTurnAction::EndTurn
+        self.turn_action_channel.increase_version().await;
+        self.turn_action_channel
+            .recv()
+            // .recv_with_timeout(Duration::from_secs(60))
+            .await
+            .unwrap_or(PlayerTurnAction::EndTurn)
     }
 }
 
@@ -185,5 +215,11 @@ impl PlayerBehavior for AIPlayerBehavior {
 impl Default for AIPlayerBehavior {
     fn default() -> Self {
         Self {}
+    }
+}
+
+impl Debug for SocketPlayerBehavior {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SocketPlayerBehavior").finish()
     }
 }

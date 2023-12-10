@@ -153,14 +153,39 @@ impl Damageable for SyncHandle<Hero> {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Buff {
+    #[allow(dead_code)]
+    buff_type: i32, // 保留字段
+    atk_boost: i32,
+    hp_boost: i32,
+}
+impl Buff {
+    pub fn new(buff_type: i32, atk_boost: i32, hp_boost: i32) -> Self {
+        Self {
+            buff_type,
+            atk_boost,
+            hp_boost,
+        }
+    }
+}
+
+#[async_trait::async_trait]
+pub trait Buffable {
+    async fn buff_list(&self) -> Vec<Buff>;
+    async fn buff(&mut self, buff: Buff);
+}
+
 /// 随从
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Minion {
     model: Arc<CardModel>,
     uuid: u64,
     atk: i32,
     hp: i64,
     max_hp: u32,
+
+    buff_list: Vec<Buff>,
 }
 
 impl Minion {
@@ -175,6 +200,7 @@ impl Minion {
             hp: info.health.into(),
             max_hp: info.health as u32,
             model,
+            buff_list: Vec::new(),
         };
 
         SyncHandle::new(minion)
@@ -229,8 +255,30 @@ impl Damageable for SyncHandle<Minion> {
     }
 }
 
+#[async_trait::async_trait]
+impl Buffable for SyncHandle<Minion> {
+    async fn buff_list(&self) -> Vec<Buff> {
+        self.get().await.buff_list.clone()
+    }
+
+    async fn buff(&mut self, buff: Buff) {
+        let mut minion = self.get_mut().await;
+        minion.atk += buff.atk_boost;
+        minion.max_hp = (minion.max_hp as i64 + buff.hp_boost as i64) as u32;
+
+        if buff.hp_boost > 0 {
+            minion.hp += buff.hp_boost as i64;
+        }
+        if minion.hp > minion.max_hp.into() {
+            minion.hp = minion.max_hp.into();
+        }
+
+        minion.buff_list.push(buff);
+    }
+}
+
 /// （手牌、牌库中的）卡牌
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Card {
     model: Arc<CardModel>,
 }

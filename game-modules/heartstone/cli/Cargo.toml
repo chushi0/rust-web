@@ -1,10 +1,14 @@
 [package]
 edition = "2021"
-name = "datastructure"
+name = "cli"
 version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-datastructure_macro_derive = {path = "datastructure_macro_derive"}
+async-trait = "0.1.74"
+datastructure = {path = "../../../datastructure"}
+dialoguer = "0.11.0"
+heartstone = {path = ".."}
 tokio = {version = "1.35.0", features = ["full"]}
+web-db = {path = "../../../web-db"}

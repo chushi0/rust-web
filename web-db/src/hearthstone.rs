@@ -12,15 +12,15 @@ pub struct Card {
     pub derive: bool,
     pub need_select_target: bool,
     pub card_info: String,
-    pub create_info: i64,
+    pub create_time: i64,
     pub update_time: i64,
     pub enable: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub enum CardType {
-    Minion,
-    Spell,
+    Minion = 1,
+    Spell = 2,
 }
 
 impl TryFrom<i32> for CardType {
@@ -196,4 +196,24 @@ pub async fn get_card_by_code(db: &mut super::Transaction<'_>, code: &str) -> Re
         .bind(code)
         .fetch_one(&mut db.tx)
         .await?)
+}
+
+#[test]
+fn gen_card_info() {
+    let card_info = CardInfo {
+        common_card_info: CommonCardInfo {},
+        special_card_info: SpecialCardInfo::Spell(SpellCardInfo {
+            effects: vec![SpellEffect::Normal {
+                effects: vec![
+                    CardEffect::DealDamage {
+                        target: Target::OppositeAllEntity,
+                        damage: 4,
+                    },
+                ],
+            }],
+        }),
+    };
+
+    println!("{}", serde_json::to_string_pretty(&card_info).unwrap());
+    println!("{}", serde_json::to_string(&card_info).unwrap());
 }

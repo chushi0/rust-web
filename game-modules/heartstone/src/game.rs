@@ -1,9 +1,9 @@
 use crate::{
-    api::{GameNotifier, NopGameNotifier},
-    interpreter::{interpreter, EventType},
+    api::{GameNotifier, NopGameNotifier, PlayerDrawCard},
+    interpreter::{has_event_type, interpreter, EventType},
     model::{
-        Battlefield, BattlefieldTrait, Camp, Card, CardModel, CardPool, Damageable, Fightline,
-        HeroTrait, Minion, MinionTrait, Target, UuidGenerator,
+        Battlefield, BattlefieldTrait, Buff, Buffable, Camp, Card, CardModel, CardPool, Damageable,
+        Fightline, HeroTrait, Minion, MinionTrait, Target, UuidGenerator,
     },
     player::{AIPlayerBehavior, Player, PlayerBehavior, PlayerTrait},
 };
@@ -16,7 +16,7 @@ use web_db::hearthstone::CardType;
 pub struct Config {
     pub card_pool: CardPool,
     pub seed: [u8; 32],
-    pub game_notifier: Box<dyn GameNotifier>,
+    pub game_notifier: Arc<dyn GameNotifier>,
 }
 
 impl Default for Config {
@@ -24,7 +24,7 @@ impl Default for Config {
         Self {
             card_pool: HashMap::new(),
             seed: rand::thread_rng().gen(),
-            game_notifier: Box::new(NopGameNotifier),
+            game_notifier: Arc::new(NopGameNotifier),
         }
     }
 }
@@ -32,7 +32,7 @@ impl Default for Config {
 #[derive(Debug)]
 pub struct PlayerConfig {
     pub max_hero_hp: u32,
-    pub behavior: Box<dyn PlayerBehavior>,
+    pub behavior: Arc<dyn PlayerBehavior>,
     pub camp: Option<Camp>,
     pub deck: HashMap<i64, u32>, // key: card_id, value: count
 }
@@ -41,7 +41,7 @@ impl Default for PlayerConfig {
     fn default() -> Self {
         Self {
             max_hero_hp: 30,
-            behavior: Box::new(AIPlayerBehavior::default()),
+            behavior: Arc::new(AIPlayerBehavior::default()),
             camp: Default::default(),
             deck: Default::default(),
         }
@@ -50,7 +50,7 @@ impl Default for PlayerConfig {
 
 #[derive(Debug)]
 pub struct Game {
-    game_notifier: Box<dyn GameNotifier>,
+    game_notifier: Arc<dyn GameNotifier>,
     card_pool: CardPool,
     _rng: StdRng,
     uuid_generator: UuidGenerator,
@@ -63,6 +63,7 @@ pub struct Game {
     pub(crate) interpreter_depth: u8,
 }
 
+#[derive(Debug)]
 pub struct GameResult {}
 
 #[derive(Debug, Clone)]
@@ -97,7 +98,7 @@ impl Game {
             }
 
             assert!(
-                camp_a.len() > 2 || camp_b.len() > 2,
+                camp_a.len() <= 2 || camp_b.len() <= 2,
                 "each team can only have a maximum of two players"
             );
 
@@ -105,8 +106,8 @@ impl Game {
             while camp_a.len() < 2 {
                 camp_a.push(camp_undefined.remove(0));
             }
-            while camp_a.len() < 2 {
-                camp_a.push(camp_undefined.remove(0));
+            while camp_b.len() < 2 {
+                camp_b.push(camp_undefined.remove(0));
             }
 
             // 初始前后排确定
@@ -198,9 +199,13 @@ impl Game {
     }
 
     async fn run_turn(&mut self) {
+        if self.turn > 1000 {
+            panic!("too many rounds that no winner is determined");
+        }
         self.turn += 1;
         let current_turn: &TurnAction = &self.turn_actions;
         let current_turn = current_turn.clone();
+        self.game_notifier.new_turn(current_turn.clone());
         log::info!("run turn: #{} {current_turn:?}", self.turn);
         match current_turn {
             TurnAction::PlayerTurn(player) => self.player_turn(player).await,
@@ -213,7 +218,10 @@ impl Game {
         log::info!("start player turn: {player:?}");
 
         player.turn_reset_mana().await;
+        self.game_notifier
+            .player_mana_change(player.get_hero().await.uuid().await, player.mana().await);
         self.player_draw_card(player.clone(), 1).await;
+        self.game_notifier.flush(self).await;
         loop {
             if self.is_game_end().await {
                 return;
@@ -230,6 +238,7 @@ impl Game {
                 }
                 crate::player::PlayerTurnAction::EndTurn => break,
             }
+            self.game_notifier.flush(self).await;
         }
 
         log::info!("end player turn: {player:?}");
@@ -239,6 +248,7 @@ impl Game {
         log::info!("start swap fightline turn");
 
         self.swap_fightline(self.players.clone()).await;
+        self.game_notifier.flush(self).await;
 
         log::info!("end swap fightline turn");
     }
@@ -337,11 +347,21 @@ impl Game {
     }
 
     pub(crate) async fn player_draw_card(&mut self, mut player: SyncHandle<Player>, count: u32) {
-        for i in 0..count {
+        for _i in 0..count {
             match player.draw_card().await {
-                crate::player::DrawCardResult::Draw(card) => {}
-                crate::player::DrawCardResult::Fire(card) => {}
+                crate::player::DrawCardResult::Draw(card) => self.game_notifier.player_draw_card(
+                    player.get_hero().await.uuid().await,
+                    PlayerDrawCard::Draw(card.get().await.clone()),
+                ),
+                crate::player::DrawCardResult::Fire(card) => self.game_notifier.player_draw_card(
+                    player.get_hero().await.uuid().await,
+                    PlayerDrawCard::Fire(card.get().await.clone()),
+                ),
                 crate::player::DrawCardResult::Tired(tired) => {
+                    self.game_notifier.player_draw_card(
+                        player.get_hero().await.uuid().await,
+                        PlayerDrawCard::Tired(tired),
+                    );
                     self.deal_damage(
                         Target::Hero(player.get_hero().await.uuid().await),
                         tired.into(),
@@ -364,7 +384,13 @@ impl Game {
         let card = card.get().await;
         let model = card.model();
 
-        player.cost_mana(model.card.mana_cost).await;
+        let cost_mana = model.card.mana_cost;
+        player.cost_mana(cost_mana).await;
+        self.game_notifier.player_use_card(
+            player.get_hero().await.uuid().await,
+            card.clone(),
+            cost_mana,
+        );
 
         match model.card_type() {
             CardType::Minion => {
@@ -386,6 +412,8 @@ impl Game {
                 }
             }
         };
+
+        self.game_notifier.player_card_effect_end();
     }
 
     pub(crate) async fn swap_fightline(&mut self, players: Vec<SyncHandle<Player>>) {
@@ -393,6 +421,10 @@ impl Game {
         let mut camp_b_swap = false;
         for player in &players {
             player.get_hero().await.swap_fightline().await;
+            self.game_notifier.player_swap_fightline(
+                player.get_hero().await.uuid().await,
+                player.get_hero().await.fightline().await,
+            );
 
             match player.camp().await {
                 Camp::A => camp_a_swap = true,
@@ -452,6 +484,9 @@ impl Game {
             .summon_minion(minion.clone())
             .await;
 
+        self.game_notifier
+            .minion_summon(minion.get().await.clone(), camp);
+
         minion
     }
 
@@ -463,17 +498,22 @@ impl Game {
     ) -> SyncHandle<Minion> {
         let minion = self.minion_summon(card, camp).await;
 
-        let result = interpreter(
-            self,
-            EventType::Battlecry,
-            Target::Minion(minion.uuid().await),
-            target,
-            card.model(),
-        )
-        .await;
+        if has_event_type(card.model().clone(), EventType::Battlecry) {
+            self.game_notifier
+                .minion_battlecry(minion.get().await.clone());
 
-        if result.need_death_check {
-            self.minion_death_check().await;
+            let result = interpreter(
+                self,
+                EventType::Battlecry,
+                Target::Minion(minion.uuid().await),
+                target,
+                card.model(),
+            )
+            .await;
+
+            if result.need_death_check {
+                self.minion_death_check().await;
+            }
         }
 
         minion
@@ -483,6 +523,9 @@ impl Game {
         let Some(attacker_mission) = self.get_minion_target(Target::Minion(attacker)).await else {
             return;
         };
+
+        self.game_notifier
+            .minion_attack(attacker_mission.get().await.clone(), target);
 
         match self.get_minion_target(target).await {
             Some(minion) => {
@@ -528,17 +571,22 @@ impl Game {
 
             let mut finish = true;
             for minion in death_minions {
-                let result = interpreter(
-                    self,
-                    EventType::Deathrattle,
-                    Target::Minion(minion.uuid().await),
-                    None,
-                    minion.model().await,
-                )
-                .await;
+                if has_event_type(minion.model().await.clone(), EventType::Deathrattle) {
+                    self.game_notifier
+                        .minion_deathrattle(minion.get().await.clone());
 
-                if result.need_death_check {
-                    finish = false;
+                    let result = interpreter(
+                        self,
+                        EventType::Deathrattle,
+                        Target::Minion(minion.uuid().await),
+                        None,
+                        minion.model().await,
+                    )
+                    .await;
+
+                    if result.need_death_check {
+                        finish = false;
+                    }
                 }
             }
 
@@ -549,6 +597,7 @@ impl Game {
     }
 
     pub(crate) async fn deal_damage(&mut self, target: Target, damage: i64) {
+        self.game_notifier.deal_damage(target, damage);
         match self.get_minion_target(target).await {
             Some(mut minion) => {
                 minion.damage(damage).await;
@@ -566,5 +615,15 @@ impl Game {
 
     pub(crate) async fn deal_heal(&mut self, target: Target, heal: i64) {
         self.deal_damage(target, -heal).await;
+    }
+
+    pub(crate) async fn buff(&mut self, target: Target, buff: Buff) {
+        self.game_notifier.buff(target, buff.clone());
+        match self.get_minion_target(target).await {
+            Some(mut minion) => {
+                minion.buff(buff).await;
+            }
+            None => {}
+        };
     }
 }
