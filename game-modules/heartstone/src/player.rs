@@ -1,6 +1,8 @@
 use crate::{
     game::{Game, PlayerConfig},
-    model::{Camp, Card, CardPool, Deck, DeckTrait, Fightline, Hand, HandTrait, Hero, Target},
+    model::{
+        Camp, Card, CardPool, Deck, DeckTrait, Fightline, Hand, HandTrait, Hero, HeroTrait, Target,
+    },
 };
 use datastructure::{SyncChannel, SyncHandle};
 use std::{
@@ -68,6 +70,10 @@ pub trait PlayerTrait {
     async fn draw_card(&mut self) -> DrawCardResult;
 
     async fn hand_cards(&self) -> Vec<SyncHandle<Card>>;
+
+    async fn uuid(&self) -> u64 {
+        self.get_hero().await.uuid().await
+    }
 }
 
 #[async_trait::async_trait]

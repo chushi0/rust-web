@@ -40,13 +40,42 @@ pub fn has_event_type(model: Arc<CardModel>, event_type: EventType) -> bool {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum Trigger {
+    // 由随从触发，用于随从各种扳机（亡语等）
+    Minion(u64),
+    // 由英雄触发，用于法术
+    Hero(u64),
+    // 由随从和英雄共同触发，用于战吼
+    MinionAndHero { minion: u64, hero: u64 },
+}
+
+impl Trigger {
+    fn into_camp_target(self) -> Target {
+        match self {
+            Trigger::Minion(id) => Target::Minion(id),
+            Trigger::Hero(id) => Target::Minion(id),
+            Trigger::MinionAndHero { hero, .. } => Target::Hero(hero),
+        }
+    }
+}
+
+impl From<Target> for Trigger {
+    fn from(value: Target) -> Self {
+        match value {
+            Target::Minion(id) => Trigger::Minion(id),
+            Target::Hero(id) => Trigger::Hero(id),
+        }
+    }
+}
+
 /// 解释卡牌效果
 /// TODO: 法术伤害、狂战
 #[async_recursion::async_recursion]
 pub async fn interpreter(
     game: &mut Game,         // 游戏对象，用于将解释的结果作用到游戏上
     event_type: EventType,   // 触发事件类型
-    trigger: Target,         // 触发对象
+    trigger: Trigger,        // 触发对象
     pointer: Option<Target>, // 触发对象所指定的对象（如果由玩家所指定）
     model: Arc<CardModel>,   // 触发对象的卡牌模型
 ) -> PerformResult {
@@ -194,7 +223,7 @@ fn query_card_effects(model: Arc<CardModel>, event_type: EventType) -> Option<Ve
 
 async fn get_damageable_target(
     game: &Game,
-    trigger: Target,
+    trigger: Trigger,
     target: ModelTarget,
     pointer: Option<Target>,
     just_summon: &Vec<SyncHandle<Minion>>,
@@ -207,14 +236,15 @@ async fn get_damageable_target(
 
 async fn get_minion_target(
     game: &Game,
-    trigger: Target,
+    trigger: Trigger,
     target: ModelTarget,
     pointer: Option<Target>,
     just_summon: &Vec<SyncHandle<Minion>>,
 ) -> Vec<Target> {
     match target {
         ModelTarget::SelfMinion => match trigger {
-            Target::Minion(id) => vec![Target::Minion(id)],
+            Trigger::Minion(id) => vec![Target::Minion(id)],
+            Trigger::MinionAndHero { minion, .. } => vec![Target::Minion(minion)],
             _ => vec![],
         },
         ModelTarget::SelectTargetMinion | ModelTarget::SelectTargetEntity => match pointer {
@@ -222,22 +252,27 @@ async fn get_minion_target(
             _ => vec![],
         },
         ModelTarget::OppositeAllMinion | ModelTarget::OppositeAllEntity => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
-            for minion in game.get_battlefield(camp.opposite()).await.minions().await {
+            for minion in game
+                .get_battlefield(camp.opposite())
+                .await
+                .alive_minions()
+                .await
+            {
                 result.push(Target::Minion(minion.uuid().await));
             }
 
             result
         }
         ModelTarget::TeamAllMinion | ModelTarget::TeamAllEntity => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
-            for minion in game.get_battlefield(camp).await.minions().await {
+            for minion in game.get_battlefield(camp).await.alive_minions().await {
                 result.push(Target::Minion(minion.uuid().await));
             }
 
@@ -245,10 +280,10 @@ async fn get_minion_target(
         }
         ModelTarget::AllMinion | ModelTarget::AllEntity => {
             let mut result = Vec::new();
-            for minion in game.get_battlefield(Camp::A).await.minions().await {
+            for minion in game.get_battlefield(Camp::A).await.alive_minions().await {
                 result.push(Target::Minion(minion.uuid().await));
             }
-            for minion in game.get_battlefield(Camp::B).await.minions().await {
+            for minion in game.get_battlefield(Camp::B).await.alive_minions().await {
                 result.push(Target::Minion(minion.uuid().await));
             }
 
@@ -278,14 +313,14 @@ async fn get_minion_target(
 
 async fn get_hero_target(
     game: &Game,
-    trigger: Target,
+    trigger: Trigger,
     target: ModelTarget,
     pointer: Option<Target>,
 ) -> Vec<Target> {
     let players = get_player_target(game, trigger, target, pointer).await;
     let mut result = Vec::new();
     for player in players {
-        result.push(Target::Hero(player.get_hero().await.uuid().await));
+        result.push(Target::Hero(player.uuid().await));
     }
 
     result
@@ -293,15 +328,26 @@ async fn get_hero_target(
 
 async fn get_player_target(
     game: &Game,
-    trigger: Target,
+    trigger: Trigger,
     target: ModelTarget,
     pointer: Option<Target>,
 ) -> Vec<SyncHandle<Player>> {
     match target {
-        ModelTarget::SelfHero => match game.get_player_target(trigger).await {
-            Some(player) => vec![player],
-            None => vec![],
-        },
+        ModelTarget::SelfHero => {
+            let player_target = match trigger {
+                Trigger::Minion(_) => None,
+                Trigger::Hero(id) => Some(Target::Hero(id)),
+                Trigger::MinionAndHero { hero, .. } => Some(Target::Hero(hero)),
+            };
+            if let Some(player_target) = player_target {
+                match game.get_player_target(player_target).await {
+                    Some(player) => vec![player],
+                    None => vec![],
+                }
+            } else {
+                vec![]
+            }
+        }
         ModelTarget::SelectTargetHero | ModelTarget::SelectTargetEntity => {
             let Some(pointer) = pointer else {
                 return vec![];
@@ -312,7 +358,7 @@ async fn get_player_target(
             }
         }
         ModelTarget::OppositeFrontHero => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
@@ -326,7 +372,7 @@ async fn get_player_target(
             result
         }
         ModelTarget::OppositeBackHero => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
@@ -340,7 +386,7 @@ async fn get_player_target(
             result
         }
         ModelTarget::OppositeAllHero | ModelTarget::OppositeAllEntity => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
@@ -352,7 +398,7 @@ async fn get_player_target(
             result
         }
         ModelTarget::TeamFrontHero => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
@@ -366,7 +412,7 @@ async fn get_player_target(
             result
         }
         ModelTarget::TeamBackHero => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();
@@ -380,7 +426,7 @@ async fn get_player_target(
             result
         }
         ModelTarget::TeamAllHero | ModelTarget::TeamAllEntity => {
-            let Some(camp) = game.get_target_camp(trigger).await else {
+            let Some(camp) = game.get_target_camp(trigger.into_camp_target()).await else {
                 return vec![];
             };
             let mut result = Vec::new();

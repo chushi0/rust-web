@@ -17,7 +17,7 @@ struct StdNotifier;
 
 #[tokio::main]
 async fn main() {
-    println!("炉石 2V2 SNAPSHOT - 20231210");
+    println!("炉石 2V2 SNAPSHOT - 20231211");
     println!("已完成基本功能开发");
     println!("卡牌已录入数据库");
     println!("测试说明：");
@@ -26,6 +26,12 @@ async fn main() {
     println!("  - 可以看到所有玩家的手牌，但不能看到牌库");
     println!("  - 仅限单机，无法联机，没有 AI");
     println!("  - 没有输入检查，这意味着您可以透支法力值（无需还款），或选择一个无效的目标");
+    println!("已修复：");
+    println!("  - 游戏详情没有展示随从uuid");
+    println!("  - 随从死亡没有通知");
+    println!("  - 释放法术后没有死亡检查");
+    println!("  - 亡语效果无效");
+    println!("  - 指定自身英雄的战吼效果无效");
     println!("待开发功能：");
     println!("  - 游戏开始时，选择前后排及起始手牌逻辑");
     println!("  - 法术伤害+X 标记");
@@ -101,7 +107,7 @@ impl GameNotifier for StdNotifier {
         println!("当前游戏状态：");
         println!("----------------------------------------");
         for player in game.players() {
-            println!("玩家 [{}]：", player.get_hero().await.uuid().await);
+            println!("玩家 [{}]：", player.uuid().await);
             println!("  法力值：{}", player.mana().await);
             println!("  生命值：{}", player.get_hero().await.hp().await);
             println!("  阵营：{}", camp_desc(player.camp().await));
@@ -121,16 +127,15 @@ impl GameNotifier for StdNotifier {
         for camp in [Camp::A, Camp::B] {
             println!("阵营 {} 随从：", camp_desc(camp));
             let minions = game.battlefield_minions(camp).await;
-            let mut index = 0;
             for minion in minions {
                 let model = minion.get().await.model().clone();
                 println!(
-                    "  #{index} {} {}/{}",
+                    "  #{} {} {}/{}",
+                    minion.uuid().await,
                     model.card.name,
                     minion.atk().await,
                     minion.hp().await
                 );
-                index += 1;
             }
         }
 

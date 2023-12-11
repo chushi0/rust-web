@@ -70,9 +70,18 @@ pub trait Damageable {
     async fn damage(&mut self, damage: i64);
 
     /// 回复生命，生命值最高不能超过 max_hp
+    #[inline]
     async fn heal(&mut self, hp: i64) {
         self.damage(-hp).await
     }
+
+    /// 消灭
+    ///
+    /// 消灭是与生命值独立的另一种击杀方式
+    async fn kill(&mut self);
+
+    /// 判断当前是否存活
+    async fn is_alive(&self) -> bool;
 }
 
 /// 英雄
@@ -86,6 +95,8 @@ pub struct Hero {
     hp: i64,
     /// 最大生命值
     max_hp: u32,
+    /// 消灭标记
+    killed: bool,
 
     /// 当前位置
     fightline: Fightline,
@@ -123,6 +134,7 @@ impl Hero {
             hp: max_hp as i64,
             max_hp,
             fightline,
+            killed: false,
         };
 
         SyncHandle::new(hero)
@@ -150,6 +162,15 @@ impl Damageable for SyncHandle<Hero> {
                 hero.hp -= damage;
             }
         }
+    }
+
+    async fn kill(&mut self) {
+        self.get_mut().await.killed = true
+    }
+
+    async fn is_alive(&self) -> bool {
+        let hero = self.get().await;
+        !hero.killed && hero.hp > 0
     }
 }
 
@@ -192,6 +213,7 @@ pub struct Minion {
     atk: i32,
     hp: i64,
     max_hp: u32,
+    killed: bool,
 
     buff_list: Vec<Buff>,
 }
@@ -207,6 +229,7 @@ impl Minion {
             atk: info.attack,
             hp: info.health.into(),
             max_hp: info.health as u32,
+            killed: false,
             model,
             buff_list: Vec::new(),
         };
@@ -276,6 +299,15 @@ impl Damageable for SyncHandle<Minion> {
                 minion.hp -= damage;
             }
         }
+    }
+
+    async fn kill(&mut self) {
+        self.get_mut().await.killed = true;
+    }
+
+    async fn is_alive(&self) -> bool {
+        let minion = self.get().await;
+        !minion.killed && minion.hp > 0
     }
 }
 
@@ -421,44 +453,78 @@ impl Hand {
 /// 战场
 #[derive(Debug)]
 pub struct Battlefield {
-    minions: Vec<SyncHandle<Minion>>,
+    minions: Vec<(SyncHandle<Minion>, bool /* death checking */)>,
 }
 
 #[async_trait::async_trait]
 pub trait BattlefieldTrait {
-    async fn minions(&self) -> Vec<SyncHandle<Minion>>;
+    /// 获取战场上存活的随从
+    async fn alive_minions(&self) -> Vec<SyncHandle<Minion>>;
+
+    /// 获取战场上的所有随从（活着的随从、濒死的随从、正在进行死亡结算的随从）
+    async fn all_minions(&self) -> Vec<SyncHandle<Minion>>;
+
+    /// 存活检查（将濒死的随从标记为正在进行死亡结算的随从，然后返回标记的列表）
+    async fn alive_check(&mut self) -> Vec<SyncHandle<Minion>>;
+
+    /// 移除正在进行死亡结算的随从（他们已经完成了死亡结算）
+    async fn remove_death_minions(&mut self);
 
     async fn summon_minion(&mut self, minion: SyncHandle<Minion>);
-
-    async fn remove_death_minions(&mut self) -> Vec<SyncHandle<Minion>>;
 }
 
 #[async_trait::async_trait]
 impl BattlefieldTrait for SyncHandle<Battlefield> {
-    async fn minions(&self) -> Vec<SyncHandle<Minion>> {
-        self.get().await.minions.clone()
+    async fn alive_minions(&self) -> Vec<SyncHandle<Minion>> {
+        self.get()
+            .await
+            .minions
+            .iter()
+            .map(|(minion, _)| minion.clone())
+            .collect()
+    }
+
+    async fn all_minions(&self) -> Vec<SyncHandle<Minion>> {
+        let mut result = Vec::new();
+        for (minion, death_checking) in &self.get().await.minions {
+            if !death_checking && minion.is_alive().await {
+                result.push(minion.clone());
+            }
+        }
+        result
     }
 
     async fn summon_minion(&mut self, minion: SyncHandle<Minion>) {
-        self.get_mut().await.minions.push(minion);
+        self.get_mut().await.minions.push((minion, false));
     }
 
-    async fn remove_death_minions(&mut self) -> Vec<SyncHandle<Minion>> {
+    async fn alive_check(&mut self) -> Vec<SyncHandle<Minion>> {
         let mut battlefield = self.get_mut().await;
 
         let mut death_minions = Vec::new();
+
+        for (minion, death_checking) in &mut battlefield.minions {
+            if !minion.is_alive().await {
+                *death_checking = true;
+                death_minions.push(minion.clone());
+            }
+        }
+
+        death_minions
+    }
+
+    async fn remove_death_minions(&mut self) {
+        let mut battlefield = self.get_mut().await;
+
         let mut alive_minions = Vec::new();
 
-        for minion in &battlefield.minions {
-            if minion.hp().await <= 0 {
-                death_minions.push(minion.clone());
-            } else {
-                alive_minions.push(minion.clone());
+        for (minion, death_checking) in &battlefield.minions {
+            if !*death_checking {
+                alive_minions.push((minion.clone(), false));
             }
         }
 
         battlefield.minions = alive_minions;
-        death_minions
     }
 }
 
