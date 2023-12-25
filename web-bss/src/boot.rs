@@ -58,7 +58,10 @@ pub fn init_rocket() -> tokio::task::JoinHandle<()> {
             home_events,
             user_new,
             mc_globaldata_advancement,
-            mc_playerdata_advancement
+            mc_playerdata_advancement,
+            heartstone_assets_list,
+            get_heartstone_cards,
+            oss_file_obtain
         ];
         rocket::build()
             .mount("/api/", routes)

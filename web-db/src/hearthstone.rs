@@ -12,9 +12,20 @@ pub struct Card {
     pub derive: bool,
     pub need_select_target: bool,
     pub card_info: String,
+    pub description: String,
+    pub resources: String,
     pub create_time: i64,
     pub update_time: i64,
     pub enable: bool,
+}
+
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct Resources {
+    pub rowid: i64,
+    pub uri: String,
+    pub md5: String,
+    pub sha1: String,
+    pub size: i64,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -198,18 +209,27 @@ pub async fn get_card_by_code(db: &mut super::Transaction<'_>, code: &str) -> Re
         .await?)
 }
 
+pub async fn get_all_resources(db: &mut super::Transaction<'_>) -> Result<Vec<Resources>> {
+    let mut iter = sqlx::query_as("select rowid, * from resources").fetch(&mut db.tx);
+
+    let mut res = Vec::new();
+    while let Some(row) = iter.try_next().await? {
+        res.push(row);
+    }
+
+    Ok(res)
+}
+
 #[test]
 fn gen_card_info() {
     let card_info = CardInfo {
         common_card_info: CommonCardInfo {},
         special_card_info: SpecialCardInfo::Spell(SpellCardInfo {
             effects: vec![SpellEffect::Normal {
-                effects: vec![
-                    CardEffect::DealDamage {
-                        target: Target::OppositeAllEntity,
-                        damage: 4,
-                    },
-                ],
+                effects: vec![CardEffect::DealDamage {
+                    target: Target::OppositeAllEntity,
+                    damage: 4,
+                }],
             }],
         }),
     };

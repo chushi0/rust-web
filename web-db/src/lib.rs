@@ -22,7 +22,7 @@ fn rds_name(rds: RDS) -> &'static str {
         RDS::User => "user",
         RDS::Event => "event",
         RDS::Furuyoni => "furuyoni",
-        RDS::Hearthstone => "hearthstone",
+        RDS::Hearthstone => "heartstone",
         RDS::McConfig => "mc-config",
         RDS::Bilibili => "bilibili",
     }

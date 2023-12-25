@@ -54,7 +54,7 @@ impl Trigger {
     fn into_camp_target(self) -> Target {
         match self {
             Trigger::Minion(id) => Target::Minion(id),
-            Trigger::Hero(id) => Target::Minion(id),
+            Trigger::Hero(id) => Target::Hero(id),
             Trigger::MinionAndHero { hero, .. } => Target::Hero(hero),
         }
     }

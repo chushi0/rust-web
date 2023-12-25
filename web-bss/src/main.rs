@@ -3,8 +3,11 @@ extern crate rocket;
 
 pub mod biz;
 mod boot;
+#[allow(unused)]
 mod handler_api;
+#[allow(unused)]
 mod handler_grpc;
+#[allow(unused)]
 mod handler_ws;
 pub mod model;
 pub mod rpc;

@@ -81,7 +81,7 @@ impl GameBiz {
         } else if paylod.name == JoinRoomRequest::NAME {
             let req = JoinRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
             let resp = self.join_room(req).await.unwrap_or_else(|e| {
-                warn!("error when handle create_room: {e}");
+                warn!("error when handle join_room: {e}");
                 let mut resp = JoinRoomResponse::new();
                 resp.code = 500;
                 resp.message = "internal error".to_string();
@@ -91,7 +91,7 @@ impl GameBiz {
         } else if paylod.name == MateRoomRequest::NAME {
             let req = MateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
             let resp = self.mate_room(req).await.unwrap_or_else(|e| {
-                warn!("error when handle create_room: {e}");
+                warn!("error when handle mate_room: {e}");
                 let mut resp = JoinRoomResponse::new();
                 resp.code = 500;
                 resp.message = "internal error".to_string();

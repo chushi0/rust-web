@@ -5,7 +5,7 @@ fn main() {
         .pure()
         .includes(&["../idl"])
         .input("../idl/bss_websocket_client.proto")
-        .input("../idl/game_data/bss_hearthstone.proto")
+        .input("../idl/game_data/bss_heartstone.proto")
         .cargo_out_dir("protos")
         .run_from_script();
 }

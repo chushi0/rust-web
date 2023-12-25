@@ -1,11 +1,8 @@
 use std::sync::Arc;
 
-use crate::{
-    biz::hearthstone::game::GameLogic,
-    common::{
-        input::InputManager,
-        room::{BizRoom, SafeRoom},
-    },
+use crate::common::{
+    input::InputManager,
+    room::{BizRoom, SafeRoom},
 };
 use async_trait::async_trait;
 use idl_gen::bss_websocket_client::BoxProtobufPayload;
@@ -26,15 +23,6 @@ impl Room {
 impl BizRoom for Room {
     async fn do_game_logic(&self, safe_room: SafeRoom) {
         log::info!("game start");
-        // let room = GameLogic::create(safe_room, self.input.clone()).await;
-        // let room = match room {
-        //     Ok(room) => room,
-        //     Err(e) => {
-        //         log::error!("create room err: {e}");
-        //         return;3
-        //     }
-        // };
-        // room.run().await;
     }
 
     async fn check_start(&self, player_count: usize) -> bool {

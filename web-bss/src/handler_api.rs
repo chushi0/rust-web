@@ -39,3 +39,35 @@ pub async fn mc_globaldata_advancement() -> Json<Model<biz::mc::GetAdvancementRe
         Model::new_error()
     }))
 }
+
+#[get("/game/heartstone/assets_list")]
+pub async fn heartstone_assets_list() -> Json<Model<biz::heartstone::AssetsListResp>> {
+    Json(
+        biz::heartstone::heartstone_assets_list()
+            .await
+            .unwrap_or_else(|e| {
+                log::error!("handle error: {e}");
+                Model::new_error()
+            }),
+    )
+}
+
+#[get("/game/heartstone/cards")]
+pub async fn get_heartstone_cards() -> Json<Model<biz::heartstone::GetHeartstoneCardsResp>> {
+    Json(
+        biz::heartstone::get_heartstone_cards()
+            .await
+            .unwrap_or_else(|e| {
+                log::error!("handle error: {e}");
+                Model::new_error()
+            }),
+    )
+}
+
+#[get("/oss-file-obtain?<uri>")]
+pub async fn oss_file_obtain(uri: String) -> Json<Model<biz::oss::OssFileObtainResp>> {
+    Json(biz::oss::oss_file_obtain(uri).await.unwrap_or_else(|e| {
+        log::error!("handle error: {e}");
+        Model::new_error()
+    }))
+}
