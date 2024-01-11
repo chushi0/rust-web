@@ -166,7 +166,7 @@ async fn fetch_and_notify(client: &Client, bangumi_watch: &BangumiWatch) -> Resu
 
         tokio::fs::File::create("image.png")
             .await?
-            .write(&cover_data)
+            .write_all(&cover_data)
             .await?;
 
         let cover_key = feishu_api::api::message::upload_image(cover_data.to_vec())
@@ -207,7 +207,7 @@ async fn download_file(url: &str) -> Result<Bytes> {
 async fn download_file_and_save(
     save_path: &str,
     base_url: &str,
-    _backup_url: &Vec<String>,
+    _backup_url: &[String],
 ) -> Result<()> {
     let bytes = download_file(base_url).await?;
 

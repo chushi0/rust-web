@@ -74,8 +74,8 @@ async fn collect_advancement(
                 namespace_entry.file_name().to_string_lossy(),
                 entry.file_name().to_string_lossy(),
             ),
-            title: mc_advancement.display.title.get(&lang)?,
-            description: mc_advancement.display.description.get(&lang)?,
+            title: mc_advancement.display.title.get(lang)?,
+            description: mc_advancement.display.description.get(lang)?,
             icon: get_icon(&mc_advancement.display.icon),
             frame: mc_advancement.display.frame.clone(),
             parent: mc_advancement.parent.clone(),
@@ -91,10 +91,8 @@ async fn collect_advancement(
 fn get_icon(icon: &HashMap<String, String>) -> Option<String> {
     if let Some(img) = icon.get("item") {
         Some(img.clone())
-    } else if let Some(img) = icon.get("block") {
-        Some(img.clone())
     } else {
-        None
+        icon.get("block").cloned()
     }
 }
 

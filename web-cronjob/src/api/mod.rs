@@ -1,3 +1,3 @@
 pub mod github;
 
-const UA: &'static str = "MyApp";
+const UA: &str = "MyApp";

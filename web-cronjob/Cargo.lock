@@ -2178,6 +2178,7 @@ dependencies = [
  "futures",
  "lazy_static",
  "serde",
+ "serde_json",
  "sqlx",
  "tokio",
 ]
