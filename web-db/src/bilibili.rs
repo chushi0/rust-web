@@ -26,10 +26,10 @@ pub async fn insert_bangumi_watch(
     sqlx::query(
     "insert into bangumi_watch (ssid, send_ep, finish, next_query_time, create_time, update_time) values (?1, ?2, ?3, ?4, ?5, ?6)",
     )
-    .bind(&bangumi_watch.ssid)
-    .bind(&bangumi_watch.send_ep)
-    .bind(&bangumi_watch.finish)
-    .bind(&bangumi_watch.next_query_time)
+    .bind(bangumi_watch.ssid)
+    .bind(bangumi_watch.send_ep)
+    .bind(bangumi_watch.finish)
+    .bind(bangumi_watch.next_query_time)
     .bind(bangumi_watch.create_time)
     .bind(bangumi_watch.update_time)
     .execute( &mut db.tx)
@@ -67,8 +67,8 @@ pub async fn update_send_ep_and_query_time(
     sqlx::query(
         "update bangumi_watch set send_ep=?1, next_query_time=?2, update_time=?3 where rowid=?4",
     )
-    .bind(&bangumi_watch.send_ep)
-    .bind(&bangumi_watch.next_query_time)
+    .bind(bangumi_watch.send_ep)
+    .bind(bangumi_watch.next_query_time)
     .bind(bangumi_watch.update_time)
     .bind(bangumi_watch.rowid)
     .execute(&mut db.tx)

@@ -47,7 +47,7 @@ pub async fn create_connection_with_path(path: &str) -> Result<SqliteConnection>
     Ok(SqliteConnection::connect(path).await?)
 }
 
-pub async fn begin_tx<'a>(connection: &'a mut SqliteConnection) -> Result<Transaction<'a>> {
+pub async fn begin_tx(connection: &mut SqliteConnection) -> Result<Transaction<'_>> {
     Ok(Transaction {
         tx: connection.begin().await?,
     })
