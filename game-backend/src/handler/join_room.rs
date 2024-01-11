@@ -50,7 +50,7 @@ async fn join_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
         .room_id
         .ok_or_else(|| Status::new(Code::InvalidArgument, "missing room_id"))?;
 
-    if room_id < room::MIN_ROOM_ID || room_id > room::MAX_ROOM_ID {
+    if !(room::MIN_ROOM_ID..=room::MAX_ROOM_ID).contains(&room_id) {
         return Err(Status::new(Code::OutOfRange, "room_id out of range"));
     }
 
@@ -85,10 +85,7 @@ async fn mate_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
 }
 
 fn clone_extra_data(extra_data: &Option<pilota::Bytes>) -> Option<Vec<u8>> {
-    match extra_data {
-        Some(data) => Some(data.to_vec()),
-        None => None,
-    }
+    extra_data.as_ref().map(|data| data.to_vec())
 }
 
 fn pack_room_players(room: &Room) -> Vec<RoomPlayer> {

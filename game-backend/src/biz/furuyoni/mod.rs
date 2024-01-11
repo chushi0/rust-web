@@ -1,4 +1,4 @@
-pub(self) mod dal;
-pub(self) mod data;
-pub(self) mod game;
+ mod dal;
+ mod data;
+ mod game;
 pub mod room;

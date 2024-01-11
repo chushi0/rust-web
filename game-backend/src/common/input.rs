@@ -94,11 +94,11 @@ impl InputManager {
 
         self.list.lock().await.insert(user_id, input);
 
-        return InputWatcher {
+        InputWatcher {
             user_id,
             receiver: recv,
             _marker: PhantomData,
-        };
+        }
     }
 
     pub async fn unregister_input_watcher<T>(&self, watcher: InputWatcher<T>)

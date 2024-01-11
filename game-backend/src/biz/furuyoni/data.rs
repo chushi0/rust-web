@@ -80,9 +80,9 @@ pub enum SpecialEffectTrigger {
 impl SpecialEffect {
     pub async fn trigger(
         &self,
-        trigger: SpecialEffectTrigger,
-        game: super::room::Room,
-        trigger_user_id: i64,
+        _trigger: SpecialEffectTrigger,
+        _game: super::room::Room,
+        _trigger_user_id: i64,
     ) -> bool {
         todo!()
     }

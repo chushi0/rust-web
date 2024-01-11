@@ -11,6 +11,12 @@ pub struct Room {
     input: Arc<InputManager>,
 }
 
+impl Default for Room {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Room {
     pub fn new() -> Room {
         Room {
@@ -21,7 +27,7 @@ impl Room {
 
 #[async_trait]
 impl BizRoom for Room {
-    async fn do_game_logic(&self, safe_room: SafeRoom) {
+    async fn do_game_logic(&self, _safe_room: SafeRoom) {
         log::info!("game start");
     }
 

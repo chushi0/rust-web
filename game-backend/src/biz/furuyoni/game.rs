@@ -1,5 +1,5 @@
 use crate::biz::furuyoni::dal::get_random_characters;
-use crate::biz::furuyoni::data::Character;
+
 use crate::common::room::SafeRoom;
 use rand_chacha::ChaCha8Rng;
 use std::collections::HashMap;
@@ -118,16 +118,16 @@ impl Game {
         self.current_user_id = user_id;
     }
 
-    async fn init_player(user_id: i64, player: SafePlayer, rng: ChaCha8Rng) {
+    async fn init_player(_user_id: i64, player: SafePlayer, rng: ChaCha8Rng) {
         let mut rng = rng;
-        let mut player = player.lock().await;
-        let characters = get_random_characters(&mut rng, 6)
+        let _player = player.lock().await;
+        let _characters = get_random_characters(&mut rng, 6)
             .await
             .expect("should get enough character");
         todo!("send selectable characters");
-        let character = todo!("get player select characters");
+        todo!("get player select characters");
         todo!("send select character to all player");
-        let cards = todo!("get player select cards");
+        todo!("get player select cards");
         todo!("shuffle cards & draw cards & redraw if player want");
     }
 
@@ -135,14 +135,14 @@ impl Game {
         *self
             .players
             .iter()
-            .filter(|(user_id, player)| this_user_id != **user_id)
+            .filter(|(user_id, _player)| this_user_id != **user_id)
             .last()
             .expect("another user should in game")
             .0
     }
 
     async fn do_main_turn(&mut self) {
-        let player = self
+        let _player = self
             .players
             .get(&self.current_user_id)
             .expect("user should in game");

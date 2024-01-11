@@ -57,7 +57,7 @@ fn check_request(user_id: i64, room_id: i32) -> Result<(), Status> {
         return Err(Status::new(Code::Unauthenticated, "user_id < 0"));
     }
 
-    if room_id < room::MIN_ROOM_ID || room_id > room::MAX_ROOM_ID {
+    if !(room::MIN_ROOM_ID..=room::MAX_ROOM_ID).contains(&room_id) {
         return Err(Status::new(Code::OutOfRange, "room_id out of range"));
     }
     Ok(())

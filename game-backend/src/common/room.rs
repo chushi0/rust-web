@@ -125,10 +125,7 @@ pub async fn get_room(game_type: GameType, room_id: i32) -> Option<SafeRoom> {
     let rooms = ROOMS.lock().await;
     let key = RoomKey { game_type, room_id };
 
-    match rooms.get(&key) {
-        Some(room) => Some(room.clone()),
-        None => None,
-    }
+    rooms.get(&key).cloned()
 }
 
 pub async fn join_room(
@@ -333,12 +330,13 @@ impl Room {
             .map(|player| player.user_id)
             .collect();
         let room_players = self.pack_room_players();
-        let mut request = SendRoomCommonChangeRequest::default();
-        request.user_ids = user_ids;
-        request.game_type = self.room_key.game_type as i32;
-        request.room_id = self.room_key.room_id;
-        request.room_players = room_players;
-        request.public = self.public;
+        let request = SendRoomCommonChangeRequest {
+            user_ids,
+            game_type: self.room_key.game_type as i32,
+            room_id: self.room_key.room_id,
+            room_players,
+            public: self.public,
+        };
 
         let resp = rpc::bss::client().send_room_common_change(request).await;
         match resp {
@@ -480,7 +478,7 @@ async fn room_runner(biz_room: Arc<Box<dyn BizRoom>>, safe_room: SafeRoom) {
 }
 
 #[cfg(test)]
-pub async unsafe fn force_start_game(safe_room: SafeRoom) {
+pub async fn force_start_game(safe_room: SafeRoom) {
     let biz_room = safe_room.lock().await.biz_room().clone();
     room_runner(biz_room, safe_room).await;
 }

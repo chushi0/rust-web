@@ -5,6 +5,12 @@ use idl_gen::bss_websocket_client::BoxProtobufPayload;
 #[derive(Debug)]
 pub struct Room {}
 
+impl Default for Room {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Room {
     pub fn new() -> Room {
         Room {}
@@ -26,5 +32,5 @@ impl BizRoom for Room {
         2
     }
 
-    async fn player_input(&self, user_id: i64, data: BoxProtobufPayload) {}
+    async fn player_input(&self, _user_id: i64, _data: BoxProtobufPayload) {}
 }
