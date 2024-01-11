@@ -57,8 +57,7 @@ message RoomPlayerAction {
 
 message RoomPlayerChangeEvent {
   repeated RoomPlayer players = 1;
-  optional PlayerChat chat = 2;
-  bool public = 3;
+  bool public = 2;
 }
 
 message RoomPlayer {
@@ -68,9 +67,10 @@ message RoomPlayer {
   bool ready = 4;
 }
 
-message PlayerChat {
+message PlayerChatEvent {
   int32 player_index = 1;
-  string message = 2;
+  repeated int32 receiver_player_indexes = 2;
+  string message = 3;
 }
 
 message LeaveRoomRequest {}

@@ -197,6 +197,8 @@ pub async fn room_chat(
     content: FastStr,
 ) -> Result<(), RoomError> {
     let room = safe_room.lock().await;
+    let room_id = room.room_key.room_id;
+    let game_type = room.room_key.game_type as i32;
     let players = room.players();
 
     let sender_user_index = players
@@ -211,6 +213,8 @@ pub async fn room_chat(
         .collect();
 
     let req = SendRoomChatRequest {
+        room_id,
+        game_type,
         sender_user_id,
         sender_user_index,
         receiver_user_indexes: receiver_user_indexes.to_vec(),
