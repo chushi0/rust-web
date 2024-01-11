@@ -27,7 +27,7 @@ pub struct HeartstoneCard {
     pub resources: String,
 }
 
-const CARD_RESOURCE_PREFIX: &'static str = "game_assets/heartstone/";
+const CARD_RESOURCE_PREFIX: &str = "game_assets/heartstone/";
 
 pub type AssetsListResp = Vec<AssetFile>;
 pub async fn heartstone_assets_list() -> Result<Model<AssetsListResp>> {

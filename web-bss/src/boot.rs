@@ -121,7 +121,7 @@ async fn serve_websocket(stream: TcpStream) {
     biz.on_open().await;
     let mut ping_time = SystemTime::now()
         .duration_since(UNIX_EPOCH)
-        .unwrap_or(Duration::default())
+        .unwrap_or_default()
         .as_millis();
     let mut ping_data: u32 = 0;
     let mut recv_response = false;
@@ -144,7 +144,7 @@ async fn serve_websocket(stream: TcpStream) {
                 ping_data += 1;
                 ping_time = SystemTime::now()
                     .duration_since(UNIX_EPOCH)
-                    .unwrap_or(Duration::default())
+                    .unwrap_or_default()
                     .as_millis();
                 let _ = ws_stream
                     .send(Message::ping(Vec::from(ping_data.to_be_bytes())))
@@ -153,17 +153,17 @@ async fn serve_websocket(stream: TcpStream) {
             Some(msg) = receiver.recv() => {
                 match msg {
                     WsMsg::Text(msg) => {
-                        if let Err(_) = ws_stream.send(Message::text(msg)).await {
+                        if ws_stream.send(Message::text(msg)).await.is_err() {
                             break 'lp;
                         }
                     },
                     WsMsg::Binary(msg) => {
-                        if let Err(_) = ws_stream.send(Message::binary(msg)).await {
+                        if ws_stream.send(Message::binary(msg)).await.is_err() {
                             break 'lp;
                         }
                     },
                     WsMsg::Close => {
-                        if let Err(_) = ws_stream.close(None, None).await {
+                        if ws_stream.close(None, None).await.is_err() {
                             break 'lp;
                         }
                     },
@@ -185,7 +185,7 @@ async fn serve_websocket(stream: TcpStream) {
                                 if equals(&ping_data, recv_data) && !recv_response {
                                     let cur_time = SystemTime::now()
                                         .duration_since(UNIX_EPOCH)
-                                        .unwrap_or(Duration::default())
+                                        .unwrap_or_default()
                                         .as_millis();
                                     let delay = cur_time - ping_time;
                                     *ping.write().await = delay as u64;
@@ -213,7 +213,7 @@ fn query_websocket_client(
     for i in 0..WEBSOCKET_BIZ_LIST.len() {
         let factory = &WEBSOCKET_BIZ_LIST[i];
         if let Some(biz) =
-            factory.create_if_match(&request, WsCon::from_sender(sender.clone(), ping.clone()))
+            factory.create_if_match(request, WsCon::from_sender(sender.clone(), ping.clone()))
         {
             return Some(biz);
         }

@@ -161,20 +161,22 @@ impl GameBiz {
             return Ok(resp);
         }
 
-        let mut rpc_req = game_backend::JoinRoomRequest::default();
-        rpc_req.user_id = user.rowid;
-        rpc_req.game_type = match game_backend::GameType::try_from(req.game_type) {
-            Ok(v) => v,
-            Err(_) => {
-                let mut resp = JoinRoomResponse::new();
-                resp.code = 1002;
-                resp.message = "game not supported".to_string();
-                return Ok(resp);
-            }
+        let rpc_req = game_backend::JoinRoomRequest {
+            user_id: user.rowid,
+            game_type: match game_backend::GameType::try_from(req.game_type) {
+                Ok(v) => v,
+                Err(_) => {
+                    let mut resp = JoinRoomResponse::new();
+                    resp.code = 1002;
+                    resp.message = "game not supported".to_string();
+                    return Ok(resp);
+                }
+            },
+            strategy: game_backend::JoinRoomStrategy::Create,
+            public: Some(req.init_public),
+            extra_data: clone_extra_data(req.extra_data),
+            ..Default::default()
         };
-        rpc_req.strategy = game_backend::JoinRoomStrategy::Create;
-        rpc_req.public = Some(req.init_public);
-        rpc_req.extra_data = clone_extra_data(req.extra_data);
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
@@ -215,20 +217,22 @@ impl GameBiz {
             return Ok(resp);
         }
 
-        let mut rpc_req = game_backend::JoinRoomRequest::default();
-        rpc_req.user_id = user.rowid;
-        rpc_req.game_type = match game_backend::GameType::try_from(req.game_type) {
-            Ok(v) => v,
-            Err(_) => {
-                let mut resp = JoinRoomResponse::new();
-                resp.code = 1002;
-                resp.message = "game not supported".to_string();
-                return Ok(resp);
-            }
+        let rpc_req = game_backend::JoinRoomRequest {
+            user_id: user.rowid,
+            game_type: match game_backend::GameType::try_from(req.game_type) {
+                Ok(v) => v,
+                Err(_) => {
+                    let mut resp = JoinRoomResponse::new();
+                    resp.code = 1002;
+                    resp.message = "game not supported".to_string();
+                    return Ok(resp);
+                }
+            },
+            strategy: game_backend::JoinRoomStrategy::Join,
+            room_id: Some(req.room_id),
+            extra_data: clone_extra_data(req.extra_data),
+            ..Default::default()
         };
-        rpc_req.strategy = game_backend::JoinRoomStrategy::Join;
-        rpc_req.room_id = Some(req.room_id);
-        rpc_req.extra_data = clone_extra_data(req.extra_data);
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
@@ -269,19 +273,21 @@ impl GameBiz {
             return Ok(resp);
         }
 
-        let mut rpc_req = game_backend::JoinRoomRequest::default();
-        rpc_req.user_id = user.rowid;
-        rpc_req.game_type = match game_backend::GameType::try_from(req.game_type) {
-            Ok(v) => v,
-            Err(_) => {
-                let mut resp = JoinRoomResponse::new();
-                resp.code = 1002;
-                resp.message = "game not supported".to_string();
-                return Ok(resp);
-            }
+        let rpc_req = game_backend::JoinRoomRequest {
+            user_id: user.rowid,
+            game_type: match game_backend::GameType::try_from(req.game_type) {
+                Ok(v) => v,
+                Err(_) => {
+                    let mut resp = JoinRoomResponse::new();
+                    resp.code = 1002;
+                    resp.message = "game not supported".to_string();
+                    return Ok(resp);
+                }
+            },
+            strategy: game_backend::JoinRoomStrategy::Mate,
+            extra_data: clone_extra_data(req.extra_data),
+            ..Default::default()
         };
-        rpc_req.strategy = game_backend::JoinRoomStrategy::Mate;
-        rpc_req.extra_data = clone_extra_data(req.extra_data);
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
@@ -304,11 +310,11 @@ impl GameBiz {
     }
 
     async fn try_remove_from_room(room: &RoomKey) -> Result<()> {
-        let mut req = game_backend::LeaveRoomRequest::default();
-        req.user_id = room.user_id;
-        req.game_type = game_backend::GameType::try_from(room.game_type)?;
-        req.room_id = room.room_id;
-
+        let req = game_backend::LeaveRoomRequest {
+            user_id: room.user_id,
+            game_type: game_backend::GameType::try_from(room.game_type)?,
+            room_id: room.room_id,
+        };
         rpc::game::client().leave_room(req).await?;
         Ok(())
     }
@@ -316,21 +322,15 @@ impl GameBiz {
 
 pub async fn get_room_wscon(key: &RoomKey) -> Option<Arc<super::WsCon>> {
     let rooms = ROOMS.read().await;
-    match rooms.get(key) {
-        Some(wscon) => Some(wscon.clone()),
-        None => None,
-    }
+    rooms.get(key).cloned()
 }
 
 fn clone_extra_data(extra_data: Option<Vec<u8>>) -> Option<pilota::Bytes> {
-    match extra_data {
-        Some(data) => Some(pilota::Bytes::copy_from_slice(&data)),
-        None => None,
-    }
+    extra_data.map(|data| pilota::Bytes::copy_from_slice(&data))
 }
 
 fn as_client_room_players(
-    players: &Vec<idl_gen::game_backend::RoomPlayer>,
+    players: &[idl_gen::game_backend::RoomPlayer],
 ) -> Vec<idl_gen::bss_websocket::RoomPlayer> {
     players
         .iter()

@@ -25,7 +25,7 @@ pub async fn parse_http_request<S: AsyncRead + AsyncWrite + Unpin>(
 
     // read request line
     s.read_line(&mut line).await?;
-    let parts: Vec<&str> = line.split(" ").collect();
+    let parts: Vec<&str> = line.split(' ').collect();
     if parts.len() != 3 && parts.len() != 2 {
         return Err(anyhow!("parse error"));
     }
@@ -83,12 +83,12 @@ pub async fn websocket_upgrade_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     req: &HttpRequest,
 ) -> Result<()> {
     let upgrade = req.headers.get("Upgrade").ok_or(anyhow!("upgrade"))?;
-    if upgrade.len() == 0 || upgrade[0] != "websocket" {
+    if upgrade.is_empty() || upgrade[0] != "websocket" {
         return Err(anyhow!("upgrade"));
     }
 
     let connection = req.headers.get("Connection").ok_or(anyhow!("connection"))?;
-    if connection.len() == 0 || connection[0] != "Upgrade" {
+    if connection.is_empty() || connection[0] != "Upgrade" {
         return Err(anyhow!("connection"));
     }
 
@@ -96,7 +96,7 @@ pub async fn websocket_upgrade_handshake<S: AsyncRead + AsyncWrite + Unpin>(
         .headers
         .get("Sec-WebSocket-Version")
         .ok_or(anyhow!("sec-websocket-version"))?;
-    if sec_websocket_version.len() == 0 || sec_websocket_version[0] != "13" {
+    if sec_websocket_version.is_empty() || sec_websocket_version[0] != "13" {
         return Err(anyhow!("unsupported version"));
     }
 
@@ -104,7 +104,7 @@ pub async fn websocket_upgrade_handshake<S: AsyncRead + AsyncWrite + Unpin>(
         .headers
         .get("Sec-WebSocket-Key")
         .ok_or(anyhow!("sec-websocket-key"))?;
-    let sec_websocket_key = if sec_websocket_key.len() == 0 {
+    let sec_websocket_key = if sec_websocket_key.is_empty() {
         return Err(anyhow!("sec-websocket-key"));
     } else {
         sec_websocket_key[0].clone()
@@ -119,10 +119,10 @@ pub async fn websocket_upgrade_handshake<S: AsyncRead + AsyncWrite + Unpin>(
     let mut base64 = String::new();
     base64::engine::general_purpose::STANDARD.encode_string(sha1_out, &mut base64);
 
-    s.write(b"HTTP/1.1 101 Switching Protocols\r\nSec-WebSocket-Version: 13\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ")
+    s.write_all(b"HTTP/1.1 101 Switching Protocols\r\nSec-WebSocket-Version: 13\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: ")
         .await?;
-    s.write(base64.as_bytes()).await?;
-    s.write(b"\r\n\r\n").await?;
+    s.write_all(base64.as_bytes()).await?;
+    s.write_all(b"\r\n\r\n").await?;
     s.flush().await?;
 
     Ok(())

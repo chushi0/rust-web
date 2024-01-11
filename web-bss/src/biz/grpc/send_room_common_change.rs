@@ -7,9 +7,11 @@ use idl_gen::{
 use crate::{service, util::protobuf};
 
 pub async fn handle(req: &SendRoomCommonChangeRequest) -> Result<SendRoomCommonChangeResponse> {
-    let mut msg = RoomPlayerChangeEvent::default();
-    msg.public = req.public;
-    msg.players = service::game::pack_game_room_player(&req.room_players).await?;
+    let msg = RoomPlayerChangeEvent {
+        public: req.public,
+        players: service::game::pack_game_room_player(&req.room_players).await?,
+        ..Default::default()
+    };
     let msg = protobuf::pack_message(msg)?;
 
     let mut success_players = vec![];

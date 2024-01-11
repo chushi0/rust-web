@@ -19,11 +19,13 @@ pub async fn pack_game_room_player(
         )
         .await?;
 
-        let mut event_player = idl_gen::bss_websocket_client::RoomPlayer::default();
-        event_player.account = user.account;
-        event_player.display_name = user.username;
-        event_player.index = player.index;
-        event_player.ready = player.ready;
+        let event_player = idl_gen::bss_websocket_client::RoomPlayer {
+            account: user.account,
+            display_name: user.username,
+            index: player.index,
+            ready: player.ready,
+            ..Default::default()
+        };
         result.push(event_player);
     }
 

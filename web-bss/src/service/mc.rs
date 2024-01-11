@@ -3,7 +3,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::collections::HashMap;
 use tokio::io::{AsyncReadExt, BufReader};
 
-const SERVER_DIR: &'static str = "/home/chushi0/mc/server/1.20/";
+const SERVER_DIR: &str = "/home/chushi0/mc/server/1.20/";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserCache {
