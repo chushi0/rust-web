@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use idl_gen::bss_websocket::SendRoomCommonChangeRequest;
 use idl_gen::bss_websocket_client::BoxProtobufPayload;
 use idl_gen::game_backend::GameType;
 use rand::distributions::Uniform;
@@ -12,6 +13,8 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::vec;
 use tokio::sync::Mutex;
 use volo_grpc::{Code, Status};
+
+use crate::rpc;
 
 lazy_static::lazy_static! {
     static ref ROOMS: Mutex<HashMap<RoomKey, SafeRoom>> = Mutex::new(HashMap::new());
@@ -154,10 +157,8 @@ pub async fn mate_room(
             let mut room = room.lock().await;
 
             if room.public && room.can_join(user_id).await {
-                unsafe {
-                    room.join_room_unchecked(entry.1.clone(), user_id, extra_data)
-                        .await;
-                }
+                room.join_room_unchecked(entry.1.clone(), user_id, extra_data)
+                    .await;
                 return Ok(entry.1.clone());
             }
         }
@@ -257,10 +258,8 @@ impl Room {
             return Err(RoomError::RoomFull);
         }
 
-        unsafe {
-            self.join_room_unchecked(safe_room, user_id, extra_data)
-                .await;
-        }
+        self.join_room_unchecked(safe_room, user_id, extra_data)
+            .await;
 
         Ok(())
     }
@@ -290,7 +289,7 @@ impl Room {
 
     /// 玩家加入房间，不检查是否满足加入条件。
     /// 务必在调用此函数前调用 [`can_join`] 函数判断是否可以加入
-    async unsafe fn join_room_unchecked(
+    async fn join_room_unchecked(
         &mut self,
         safe_room: SafeRoom,
         user_id: i64,
@@ -310,10 +309,47 @@ impl Room {
         self.start_game_if_satisfy(safe_room).await;
     }
 
+    pub fn pack_room_players(&self) -> Vec<idl_gen::bss_websocket::RoomPlayer> {
+        let mut players = Vec::new();
+        for i in 0..self.join_players.len() {
+            let player = &self.join_players[i];
+
+            players.push(idl_gen::bss_websocket::RoomPlayer {
+                user_id: player.user_id,
+                index: i as i32,
+                ready: player.ready,
+                online: !player.lost_connection,
+                master: false,
+            });
+        }
+
+        players
+    }
+
     async fn broadcast_user_change(&self) {
-        // TODO: call bss rpc to notify player change
-        // consume error if any error happened
-        // todo!()
+        let user_ids = self
+            .join_players
+            .iter()
+            .map(|player| player.user_id)
+            .collect();
+        let room_players = self.pack_room_players();
+        let mut request = SendRoomCommonChangeRequest::default();
+        request.user_ids = user_ids;
+        request.game_type = self.room_key.game_type as i32;
+        request.room_id = self.room_key.room_id;
+        request.room_players = room_players;
+        request.public = self.public;
+
+        let resp = rpc::bss::client().send_room_common_change(request).await;
+        match resp {
+            Ok(resp) => {
+                let failed_user_ids = &resp.get_ref().failed_user_ids;
+                if !failed_user_ids.is_empty() {
+                    log::warn!("send room common change error for user ids: {failed_user_ids:?}")
+                }
+            }
+            Err(err) => log::warn!("send room common change error: {err:?}"),
+        }
     }
 
     fn get_player(&mut self, user_id: i64) -> Option<&mut RoomPlayer> {

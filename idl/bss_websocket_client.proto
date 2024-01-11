@@ -45,6 +45,7 @@ message JoinRoomResponse {
   int32 code = 1;
   string message = 2;
   optional int32 room_id = 3;
+  repeated RoomPlayer players = 4;
 }
 
 message RoomPlayerAction {

@@ -130,7 +130,7 @@ async fn serve_websocket(stream: TcpStream) {
         .await;
     let mut timeout_count = 0;
 
-    loop {
+    'lp: loop {
         tokio::select! {
             _ = sleep(Duration::from_secs(10)) => {
                 if !recv_response {
@@ -154,17 +154,17 @@ async fn serve_websocket(stream: TcpStream) {
                 match msg {
                     WsMsg::Text(msg) => {
                         if let Err(_) = ws_stream.send(Message::text(msg)).await {
-                            break;
+                            break 'lp;
                         }
                     },
                     WsMsg::Binary(msg) => {
                         if let Err(_) = ws_stream.send(Message::binary(msg)).await {
-                            break;
+                            break 'lp;
                         }
                     },
                     WsMsg::Close => {
                         if let Err(_) = ws_stream.close(None, None).await {
-                            break;
+                            break 'lp;
                         }
                     },
                 }
@@ -194,9 +194,9 @@ async fn serve_websocket(stream: TcpStream) {
                                 }
                             }
                         },
-                        Err(_) => break,
+                        Err(_) => break 'lp,
                     },
-                    None => break,
+                    None => break 'lp,
                 }
             }
         }

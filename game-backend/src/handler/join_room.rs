@@ -1,7 +1,7 @@
-use idl_gen::game_backend::*;
+use idl_gen::game_backend::{RoomPlayer, *};
 use volo_grpc::{Code, Request, Response, Status};
 
-use crate::common::room;
+use crate::common::room::{self, Room};
 
 pub async fn handle(req: Request<JoinRoomRequest>) -> Result<Response<JoinRoomResponse>, Status> {
     let req = req.get_ref();
@@ -41,6 +41,7 @@ async fn create_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> 
 
     Ok(JoinRoomResponse {
         room_id: room.get_room_id(),
+        players: pack_room_players(&room),
     })
 }
 
@@ -63,6 +64,7 @@ async fn join_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
 
     Ok(JoinRoomResponse {
         room_id: room.get_room_id(),
+        players: pack_room_players(&room),
     })
 }
 
@@ -78,6 +80,7 @@ async fn mate_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
 
     Ok(JoinRoomResponse {
         room_id: room.get_room_id(),
+        players: pack_room_players(&room),
     })
 }
 
@@ -86,4 +89,17 @@ fn clone_extra_data(extra_data: &Option<pilota::Bytes>) -> Option<Vec<u8>> {
         Some(data) => Some(data.to_vec()),
         None => None,
     }
+}
+
+fn pack_room_players(room: &Room) -> Vec<RoomPlayer> {
+    room.pack_room_players()
+        .into_iter()
+        .map(|player| RoomPlayer {
+            user_id: player.user_id,
+            index: player.index,
+            ready: player.ready,
+            online: player.online,
+            master: player.master,
+        })
+        .collect()
 }

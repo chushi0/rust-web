@@ -12,6 +12,14 @@ enum JoinRoomStrategy {
   MATE = 2;
 }
 
+message RoomPlayer {
+  int64 user_id = 1;
+  int32 index = 2;
+  bool ready = 3;
+  bool online = 4;
+  bool master = 5;
+}
+
 message JoinRoomRequest {
   int64 user_id = 1;
   GameType game_type = 2;
@@ -21,7 +29,10 @@ message JoinRoomRequest {
   optional bytes extra_data = 6; // 加入房间携带的额外信息
 }
 
-message JoinRoomResponse { int32 roomId = 1; }
+message JoinRoomResponse { 
+  int32 roomId = 1;
+  repeated RoomPlayer players = 2;
+}
 
 message SetPlayerReadyRequest {
   int64 user_id = 1;

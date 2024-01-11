@@ -1,5 +1,6 @@
 use super::WsBiz;
 use crate::rpc;
+use crate::service;
 use crate::util::protobuf::pack_message;
 use anyhow::Result;
 use idl_gen::bss_websocket_client::*;
@@ -51,6 +52,9 @@ impl WsBiz for GameBiz {
         if let Some(room) = &self.room {
             let mut rooms = ROOMS.write().await;
             rooms.remove(room);
+
+            let leave_resp = Self::try_remove_from_room(room).await;
+            log::info!("try remove from room: {:?}", leave_resp);
         }
     }
 }
@@ -187,6 +191,9 @@ impl GameBiz {
         resp.code = 0;
         resp.message = "success".to_string();
         resp.room_id = Some(rpc_resp.room_id);
+        resp.players =
+            service::game::pack_game_room_player(&as_client_room_players(&rpc_resp.players))
+                .await?;
         Ok(resp)
     }
 
@@ -238,6 +245,9 @@ impl GameBiz {
         resp.code = 0;
         resp.message = "success".to_string();
         resp.room_id = Some(rpc_resp.room_id);
+        resp.players =
+            service::game::pack_game_room_player(&as_client_room_players(&rpc_resp.players))
+                .await?;
         Ok(resp)
     }
 
@@ -287,7 +297,20 @@ impl GameBiz {
         let mut resp = JoinRoomResponse::new();
         resp.code = 0;
         resp.message = "success".to_string();
+        resp.players =
+            service::game::pack_game_room_player(&as_client_room_players(&rpc_resp.players))
+                .await?;
         Ok(resp)
+    }
+
+    async fn try_remove_from_room(room: &RoomKey) -> Result<()> {
+        let mut req = game_backend::LeaveRoomRequest::default();
+        req.user_id = room.user_id;
+        req.game_type = game_backend::GameType::try_from(room.game_type)?;
+        req.room_id = room.room_id;
+
+        rpc::game::client().leave_room(req).await?;
+        Ok(())
     }
 }
 
@@ -304,4 +327,19 @@ fn clone_extra_data(extra_data: Option<Vec<u8>>) -> Option<pilota::Bytes> {
         Some(data) => Some(pilota::Bytes::copy_from_slice(&data)),
         None => None,
     }
+}
+
+fn as_client_room_players(
+    players: &Vec<idl_gen::game_backend::RoomPlayer>,
+) -> Vec<idl_gen::bss_websocket::RoomPlayer> {
+    players
+        .iter()
+        .map(|player| idl_gen::bss_websocket::RoomPlayer {
+            user_id: player.user_id,
+            index: player.index,
+            ready: player.ready,
+            online: player.online,
+            master: player.master,
+        })
+        .collect()
 }

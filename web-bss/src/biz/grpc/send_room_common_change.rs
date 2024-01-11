@@ -1,35 +1,15 @@
 use anyhow::Result;
 use idl_gen::{
     bss_websocket::{SendRoomCommonChangeRequest, SendRoomCommonChangeResponse},
-    bss_websocket_client::{RoomPlayer, RoomPlayerChangeEvent},
+    bss_websocket_client::RoomPlayerChangeEvent,
 };
-use web_db::user::{query_user, QueryUserParam};
-use web_db::{begin_tx, create_connection, RDS};
 
-use crate::util::protobuf;
+use crate::{service, util::protobuf};
 
 pub async fn handle(req: &SendRoomCommonChangeRequest) -> Result<SendRoomCommonChangeResponse> {
-    let mut conn = create_connection(RDS::User).await?;
-    let mut tx = begin_tx(&mut conn).await?;
-
     let mut msg = RoomPlayerChangeEvent::default();
     msg.public = req.public;
-    for player in &req.room_players {
-        let user = query_user(
-            &mut tx,
-            QueryUserParam::ByUid {
-                uid: player.user_id,
-            },
-        )
-        .await?;
-
-        let mut event_player = RoomPlayer::default();
-        event_player.account = user.account;
-        event_player.display_name = user.username;
-        event_player.index = player.index;
-        event_player.ready = player.ready;
-        msg.players.push(event_player);
-    }
+    msg.players = service::game::pack_game_room_player(&req.room_players).await?;
     let msg = protobuf::pack_message(msg)?;
 
     let mut success_players = vec![];
@@ -43,7 +23,8 @@ pub async fn handle(req: &SendRoomCommonChangeRequest) -> Result<SendRoomCommonC
 
         match crate::ws::game::get_room_wscon(&key).await {
             Some(wscon) => {
-                if let Err(_) = wscon.send_binary(msg.clone()) {
+                if let Err(e) = wscon.send_binary(msg.clone()) {
+                    log::warn!("send room common change error: {}", e);
                     fail_players.push(*user_id)
                 } else {
                     success_players.push(*user_id);
