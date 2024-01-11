@@ -1,7 +1,10 @@
 use async_trait::async_trait;
+use idl_gen::bss_websocket::SendRoomChatRequest;
 use idl_gen::bss_websocket::SendRoomCommonChangeRequest;
 use idl_gen::bss_websocket_client::BoxProtobufPayload;
 use idl_gen::game_backend::GameType;
+use log::warn;
+use pilota::FastStr;
 use rand::distributions::Uniform;
 use rand::prelude::Distribution;
 use rand::SeedableRng;
@@ -83,6 +86,7 @@ pub enum RoomError {
     RoomFull,
     RoomHasBeenJoin,
     PlayerNotInRoom,
+    InternalError,
 }
 
 pub async fn create_room(game_type: GameType) -> SafeRoom {
@@ -184,6 +188,42 @@ pub async fn set_player_ready(
     let room = safe_room.clone();
     let mut room = room.lock().await;
     room.set_player_ready(safe_room, user_id, ready).await
+}
+
+pub async fn room_chat(
+    safe_room: SafeRoom,
+    sender_user_id: i64,
+    receiver_user_indexes: &[i32],
+    content: FastStr,
+) -> Result<(), RoomError> {
+    let room = safe_room.lock().await;
+    let players = room.players();
+
+    let sender_user_index = players
+        .iter()
+        .position(|player| player.user_id == sender_user_id)
+        .ok_or(RoomError::PlayerNotInRoom)? as i32;
+
+    let receiver_user_ids = receiver_user_indexes
+        .iter()
+        .filter(|index| **index >= 0 && (**index as usize) < players.len())
+        .map(|index| players[*index as usize].user_id)
+        .collect();
+
+    let req = SendRoomChatRequest {
+        sender_user_id,
+        sender_user_index,
+        receiver_user_indexes: receiver_user_indexes.to_vec(),
+        receiver_user_ids,
+        content,
+    };
+
+    rpc::bss::client().send_room_chat(req).await.map_err(|e| {
+        warn!("send room chat error: {e:?}");
+        RoomError::InternalError
+    })?;
+
+    Ok(())
 }
 
 fn create_biz_room(game_type: GameType) -> Box<dyn BizRoom> {
@@ -455,6 +495,7 @@ impl From<RoomError> for Status {
             RoomError::RoomFull => Code::FailedPrecondition,
             RoomError::RoomHasBeenJoin => Code::AlreadyExists,
             RoomError::PlayerNotInRoom => Code::NotFound,
+            RoomError::InternalError => Code::Internal,
         };
         let msg = format!("{value:?}");
         Status::new(code, msg)

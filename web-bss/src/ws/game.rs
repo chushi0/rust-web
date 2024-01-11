@@ -2,6 +2,7 @@ use super::WsBiz;
 use crate::rpc;
 use crate::service;
 use crate::util::protobuf::pack_message;
+use anyhow::anyhow;
 use anyhow::Result;
 use idl_gen::bss_websocket_client::*;
 use idl_gen::game_backend;
@@ -61,47 +62,40 @@ impl WsBiz for GameBiz {
 
 impl GameBiz {
     async fn do_binary_message(&mut self, msg: &[u8]) -> Result<()> {
-        let paylod = BoxProtobufPayload::parse_from_bytes(msg)?;
-        if paylod.name == ClientLoginRequest::NAME {
-            let req = ClientLoginRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = self.client_login(req).await.unwrap_or_else(|e| {
-                warn!("error when handle client_login: {e}");
-                let mut resp = ClientLoginResponse::new();
-                resp.code = 500;
-                resp.message = "internal error".to_string();
-                resp
-            });
-            self.con.send_binary(pack_message(resp)?)?;
-        } else if paylod.name == CreateRoomRequest::NAME {
-            let req = CreateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = self.create_room(req).await.unwrap_or_else(|e| {
-                warn!("error when handle create_room: {e}");
-                let mut resp = JoinRoomResponse::new();
-                resp.code = 500;
-                resp.message = "internal error".to_string();
-                resp
-            });
-            self.con.send_binary(pack_message(resp)?)?;
-        } else if paylod.name == JoinRoomRequest::NAME {
-            let req = JoinRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = self.join_room(req).await.unwrap_or_else(|e| {
-                warn!("error when handle join_room: {e}");
-                let mut resp = JoinRoomResponse::new();
-                resp.code = 500;
-                resp.message = "internal error".to_string();
-                resp
-            });
-            self.con.send_binary(pack_message(resp)?)?;
-        } else if paylod.name == MateRoomRequest::NAME {
-            let req = MateRoomRequest::parse_from_bytes(paylod.payload.as_slice())?;
-            let resp = self.mate_room(req).await.unwrap_or_else(|e| {
-                warn!("error when handle mate_room: {e}");
-                let mut resp = JoinRoomResponse::new();
-                resp.code = 500;
-                resp.message = "internal error".to_string();
-                resp
-            });
-            self.con.send_binary(pack_message(resp)?)?;
+        macro_rules! router {
+            ($($req:ty => $func:tt $(: $resp:ty)? ,)*) => {
+                let paylod = BoxProtobufPayload::parse_from_bytes(msg)?;
+
+                match paylod.name.as_ref() {
+                    $(
+                        <$req>::NAME => {
+                            let req = <$req>::parse_from_bytes(paylod.payload.as_slice())?;
+                            let resp = self.$func(req).await;
+                            if resp.is_err() {
+                                warn!("error when handle {}: {resp:?}", paylod.name);
+                            }
+                            $(
+                                let resp = resp.unwrap_or_else(|_| {
+                                    let mut resp = <$resp>::new();
+                                    resp.code = 500;
+                                    resp.message = "internal error".to_string();
+                                    resp
+                                });
+                                self.con.send_binary(pack_message(resp)?)?;
+                            )?
+                        }
+                    )*
+                    name => return Err(anyhow::anyhow!("Received not supported message: {name}")),
+                }
+            };
+        }
+
+        router! {
+            ClientLoginRequest => client_login: ClientLoginResponse,
+            CreateRoomRequest => create_room: JoinRoomResponse,
+            JoinRoomRequest => join_room: JoinRoomResponse,
+            MateRoomRequest => mate_room: JoinRoomResponse,
+            RoomPlayerAction => room_player_action,
         }
 
         Ok(())
@@ -307,6 +301,50 @@ impl GameBiz {
             service::game::pack_game_room_player(&as_client_room_players(&rpc_resp.players))
                 .await?;
         Ok(resp)
+    }
+
+    async fn room_player_action(&mut self, req: RoomPlayerAction) -> Result<()> {
+        let Some(room) = self.room else {
+            return Err(anyhow!("user has not join any room"));
+        };
+
+        let user_id = room.user_id;
+        let game_type = game_backend::GameType::try_from(room.game_type)?;
+        let room_id = room.room_id;
+
+        if let Some(ready) = req.ready {
+            let rpc_req = game_backend::SetPlayerReadyRequest {
+                user_id,
+                game_type,
+                room_id,
+                ready,
+            };
+            rpc::game::client().set_player_ready(rpc_req).await?;
+        }
+
+        if let Some(chat) = req.chat {
+            let rpc_req = game_backend::SendGameChatRequest {
+                user_id,
+                game_type,
+                room_id,
+                receiver_user_id: req.chat_receiver,
+                content: chat.into(),
+            };
+            rpc::game::client().send_game_chat(rpc_req).await?;
+        }
+
+        if let Some(public) = req.make_public {
+            if public {
+                let rpc_req = game_backend::SetRoomPublicRequest {
+                    user_id,
+                    game_type,
+                    room_id,
+                };
+                rpc::game::client().set_room_public(rpc_req).await?;
+            }
+        }
+
+        Ok(())
     }
 
     async fn try_remove_from_room(room: &RoomKey) -> Result<()> {

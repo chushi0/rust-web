@@ -4,23 +4,21 @@ use volo_grpc::{Request, Response, Status};
 
 pub struct S;
 
-impl idl_gen::bss_websocket::BssWebsocketService for S {
-    async fn send_room_common_change(
-        &self,
-        req: Request<SendRoomCommonChangeRequest>,
-    ) -> Result<Response<SendRoomCommonChangeResponse>, Status> {
-        let req = req.get_ref();
+macro_rules! rpc {
+    ($name:tt($req:tt) -> $resp:tt) => {
+        async fn $name(&self, req: Request<$req>) -> Result<Response<$resp>, Status> {
+            let req = req.get_ref();
 
-        match grpc::send_room_common_change::handle(req).await {
-            Ok(resp) => Ok(Response::new(resp)),
-            Err(e) => Err(Status::internal(e.to_string())),
+            match grpc::$name::handle(req).await {
+                Ok(resp) => Ok(Response::new(resp)),
+                Err(e) => Err(Status::internal(e.to_string())),
+            }
         }
-    }
+    };
+}
 
-    async fn send_game_event(
-        &self,
-        _req: Request<SendGameEventRequest>,
-    ) -> Result<Response<SendGameEventResponse>, Status> {
-        todo!()
-    }
+impl idl_gen::bss_websocket::BssWebsocketService for S {
+    rpc!(send_room_common_change(SendRoomCommonChangeRequest) -> SendRoomCommonChangeResponse);
+    rpc!(send_room_chat(SendRoomChatRequest) -> SendRoomChatResponse);
+    rpc!(send_game_event(SendGameEventRequest) -> SendGameEventResponse);
 }

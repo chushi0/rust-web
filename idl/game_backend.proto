@@ -59,9 +59,20 @@ message LeaveRoomRequest {
 
 message LeaveRoomResponse {}
 
+message SendGameChatRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+  repeated int32 receiver_user_id = 4;
+  string content = 5;
+}
+
+message SendGameChatResponse {}
+
 service GameBackendService {
   rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
   rpc SetPlayerReady(SetPlayerReadyRequest) returns (SetPlayerReadyResponse);
   rpc SetRoomPublic(SetRoomPublicRequest) returns (SetRoomPublicResponse);
   rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse);
+  rpc SendGameChat(SendGameChatRequest) returns (SendGameChatResponse);
 }

@@ -52,6 +52,27 @@ pub async fn handle_leave_room(
     Ok(Response::new(LeaveRoomResponse::default()))
 }
 
+pub async fn handle_send_room_chat(
+    req: Request<SendGameChatRequest>,
+) -> Result<Response<SendGameChatResponse>, Status> {
+    let req = req.get_ref();
+    check_request(req.user_id, req.room_id)?;
+
+    let room = room::get_room(req.game_type, req.room_id)
+        .await
+        .ok_or_else(|| Status::new(Code::NotFound, "missing room"))?;
+
+    room::room_chat(
+        room,
+        req.user_id,
+        &req.receiver_user_id,
+        req.content.clone(),
+    )
+    .await?;
+
+    Ok(Response::new(SendGameChatResponse::default()))
+}
+
 fn check_request(user_id: i64, room_id: i32) -> Result<(), Status> {
     if user_id <= 0 {
         return Err(Status::new(Code::Unauthenticated, "user_id < 0"));

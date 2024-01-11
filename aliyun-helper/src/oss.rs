@@ -11,7 +11,7 @@ pub fn get_download_url(path: &str, expire_at: u64) -> String {
     let access_key_secret = include_str!("../config/access_key_secret.txt");
     let plain_message = format!("GET\n\n\n{}\n/{}/{}", expire_at, bucket_name, path);
 
-    let signature = hmacsha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
+    let signature = hmac_sha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
     let signature = base64::engine::general_purpose::STANDARD.encode(signature);
     let signature = urlencoding::encode(&signature);
 
@@ -36,7 +36,7 @@ pub async fn upload_file(path: &str, file: Vec<u8>, mimetype: &str) -> Result<()
         mimetype, expire_at, bucket_name, path
     );
 
-    let signature = hmacsha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
+    let signature = hmac_sha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
     let signature = base64::engine::general_purpose::STANDARD.encode(signature);
     let signature = urlencoding::encode(&signature);
 

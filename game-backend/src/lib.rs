@@ -38,4 +38,11 @@ impl idl_gen::game_backend::GameBackendService for S {
     ) -> Result<Response<LeaveRoomResponse>, Status> {
         handler::room_interactive::handle_leave_room(req).await
     }
+
+    async fn send_game_chat(
+        &self,
+        req: Request<SendGameChatRequest>,
+    ) -> Result<Response<SendGameChatResponse>, Status> {
+        handler::room_interactive::handle_send_room_chat(req).await
+    }
 }
