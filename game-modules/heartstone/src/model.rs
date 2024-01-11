@@ -153,6 +153,7 @@ impl Damageable for SyncHandle<Hero> {
 
     async fn damage(&mut self, damage: i64) {
         let mut hero = self.get_mut().await;
+        #[allow(clippy::collapsible_else_if)]
         if damage > 0 {
             hero.hp -= damage;
         } else {
@@ -290,6 +291,7 @@ impl Damageable for SyncHandle<Minion> {
 
     async fn damage(&mut self, damage: i64) {
         let mut minion = self.get_mut().await;
+        #[allow(clippy::collapsible_else_if)]
         if damage > 0 {
             minion.hp -= damage;
         } else {

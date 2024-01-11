@@ -82,7 +82,7 @@ impl PlayerTrait for SyncHandle<Player> {
         // 从behavior中读取action信息，并判定输入是否合法
         let player = self.get().await;
         loop {
-            let action = player.behavior.next_action(game, &*player).await;
+            let action = player.behavior.next_action(game, &player).await;
             let check_action = match action {
                 PlayerTurnAction::PlayCard { hand_index, target } => {
                     // 检查牌存在
@@ -191,7 +191,7 @@ pub struct SocketPlayerBehavior {
     turn_action_channel: SyncChannel<PlayerTurnAction>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct AIPlayerBehavior {}
 
 impl SocketPlayerBehavior {
@@ -206,6 +206,12 @@ impl SocketPlayerBehavior {
         turn_action: PlayerTurnAction,
     ) -> Result<(), SendError<PlayerTurnAction>> {
         self.turn_action_channel.send(turn_action).await
+    }
+}
+
+impl Default for SocketPlayerBehavior {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -229,12 +235,6 @@ impl PlayerBehavior for AIPlayerBehavior {
 
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
         PlayerTurnAction::EndTurn
-    }
-}
-
-impl Default for AIPlayerBehavior {
-    fn default() -> Self {
-        Self {}
     }
 }
 

@@ -199,7 +199,7 @@ impl Game {
                 return true;
             }
         }
-        return false;
+        false
     }
 
     async fn run_turn(&mut self) {
@@ -265,8 +265,7 @@ impl Game {
     pub(crate) async fn query_model_by_code(&self, code: &str) -> Option<Arc<CardModel>> {
         let models: Vec<_> = self
             .card_pool
-            .iter()
-            .map(|(_, model)| model)
+            .values()
             .filter(|model| model.card.code == code)
             .collect();
 
@@ -393,7 +392,7 @@ impl Game {
 
         match model.card_type() {
             CardType::Minion => {
-                self.minion_summon_with_battlecry(&*card, player.camp().await, player, target)
+                self.minion_summon_with_battlecry(&card, player.camp().await, player, target)
                     .await;
             }
             CardType::Spell => {
@@ -542,23 +541,17 @@ impl Game {
         self.game_notifier
             .minion_attack(attacker_mission.get().await.clone(), target);
 
-        match self.get_minion_target(target).await {
-            Some(minion) => {
-                self.deal_damage(target, attacker_mission.atk().await.into())
-                    .await;
-                self.deal_damage(Target::Minion(attacker), minion.atk().await.into())
-                    .await;
-                self.minion_death_check().await;
-            }
-            None => {}
+        if let Some(minion) = self.get_minion_target(target).await {
+            self.deal_damage(target, attacker_mission.atk().await.into())
+                .await;
+            self.deal_damage(Target::Minion(attacker), minion.atk().await.into())
+                .await;
+            self.minion_death_check().await;
         };
 
-        match self.get_player_target(target).await {
-            Some(_) => {
-                self.deal_damage(target, attacker_mission.atk().await.into())
-                    .await;
-            }
-            None => {}
+        if self.get_player_target(target).await.is_some() {
+            self.deal_damage(target, attacker_mission.atk().await.into())
+                .await;
         };
     }
 
@@ -624,18 +617,12 @@ impl Game {
 
     pub(crate) async fn deal_damage(&mut self, target: Target, damage: i64) {
         self.game_notifier.deal_damage(target, damage);
-        match self.get_minion_target(target).await {
-            Some(mut minion) => {
-                minion.damage(damage).await;
-            }
-            None => {}
+        if let Some(mut minion) = self.get_minion_target(target).await {
+            minion.damage(damage).await;
         };
 
-        match self.get_player_target(target).await {
-            Some(player) => {
-                player.get_hero().await.damage(damage).await;
-            }
-            None => {}
+        if let Some(player) = self.get_player_target(target).await {
+            player.get_hero().await.damage(damage).await;
         };
     }
 
@@ -645,11 +632,8 @@ impl Game {
 
     pub(crate) async fn buff(&mut self, target: Target, buff: Buff) {
         self.game_notifier.buff(target, buff.clone());
-        match self.get_minion_target(target).await {
-            Some(mut minion) => {
-                minion.buff(buff).await;
-            }
-            None => {}
+        if let Some(mut minion) = self.get_minion_target(target).await {
+            minion.buff(buff).await;
         };
     }
 }
