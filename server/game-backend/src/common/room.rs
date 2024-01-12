@@ -1,3 +1,4 @@
+use crate::rpc;
 use async_trait::async_trait;
 use idl_gen::bss_websocket::SendRoomChatRequest;
 use idl_gen::bss_websocket::SendRoomCommonChangeRequest;
@@ -16,8 +17,6 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use std::vec;
 use tokio::sync::Mutex;
 use volo_grpc::{Code, Status};
-
-use crate::rpc;
 
 lazy_static::lazy_static! {
     static ref ROOMS: Mutex<HashMap<RoomKey, SafeRoom>> = Mutex::new(HashMap::new());
@@ -312,7 +311,7 @@ impl Room {
         }
 
         let player_count = self.join_players.len();
-        self.join_players.retain(|player| player.user_id == user_id);
+        self.join_players.retain(|player| player.user_id != user_id);
         // 没有删除任何玩家
         if player_count == self.join_players.len() {
             return Err(RoomError::PlayerNotInRoom);
@@ -368,12 +367,17 @@ impl Room {
     }
 
     async fn broadcast_user_change(&self) {
-        let user_ids = self
+        let user_ids: Vec<_> = self
             .join_players
             .iter()
             .map(|player| player.user_id)
             .collect();
         let room_players = self.pack_room_players();
+
+        if user_ids.is_empty() || room_players.is_empty() {
+            return;
+        }
+
         let request = SendRoomCommonChangeRequest {
             user_ids,
             game_type: self.room_key.game_type as i32,
