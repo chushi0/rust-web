@@ -1,0 +1,24 @@
+[package]
+edition = "2021"
+name = "web-cronjob"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+aliyun-helper = {path = "../../server-lib/aliyun-helper"}
+bilibili-api = {path = "../../server-lib/bilibili-api"}
+feishu-api = {path = "../../server-lib/feishu-api"}
+web-db = {path = "../../server-lib/web-db"}
+
+anyhow = "1.0"
+bytes = "1.5.0"
+clap = {version = "4.2.7", features = ["derive"]}
+log = "0.4.6"
+log4rs = "1.2.0"
+reqwest = {version = "0.11.17", features = ["json"]}
+serde = {version = "1.0.163", features = ["rc"]}
+serde_json = "1.0.96"
+sqlx = {version = "0.6", features = ["runtime-tokio-rustls", "sqlite"]}
+time = {version = "0.3.21", features = ["serde", "macros", "parsing", "formatting"]}
+tokio = {version = "1.28.1", features = ["full"]}

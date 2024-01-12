@@ -1,0 +1,17 @@
+[workspace]
+members = [
+  "web-fe",
+  "lib/datastructure",
+  "lib/datastructure/datastructure_macro_derive",
+  "lib/idl-gen",
+  "server/web-bss",
+  "server/web-cronjob",
+  "server/game-backend",
+  "server-lib/web-db",
+  "server-lib/aliyun-helper",
+  "server-lib/feishu-api",
+  "server-lib/bilibili-api",
+  "game-modules/heartstone",
+  "game-modules/heartstone/cli",
+]
+resolver = "2"
