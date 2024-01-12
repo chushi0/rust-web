@@ -16,7 +16,7 @@ members = [
 ]
 resolver = "2"
 
-[profile.release.package."game_backend"]
+[profile.release.package."game-backend"]
 codegen-units = 1
 debug = true
 debug-assertions = false

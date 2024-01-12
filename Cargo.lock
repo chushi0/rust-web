@@ -419,20 +419,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "702fc72eb24e5a1e48ce58027a675bc24edd52096d5397d4aea7c6dd9eca0bd1"
 
 [[package]]
-name = "cli"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "datastructure",
- "dialoguer",
- "heartstone",
- "serde",
- "serde_json",
- "tokio",
- "web-db",
-]
-
-[[package]]
 name = "colorchoice"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1002,7 +988,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "game_backend"
+name = "game-backend"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -1353,6 +1339,20 @@ dependencies = [
  "lazy_static",
  "log",
  "rand 0.8.5",
+ "tokio",
+ "web-db",
+]
+
+[[package]]
+name = "heartstone-cli"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "datastructure",
+ "dialoguer",
+ "heartstone",
+ "serde",
+ "serde_json",
  "tokio",
  "web-db",
 ]

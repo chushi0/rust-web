@@ -1,14 +1,32 @@
 #![feature(type_alias_impl_trait)]
 
-use idl_gen::game_backend::*;
-use volo_grpc::{Request, Response, Status};
+use std::net::SocketAddr;
 
-pub struct S;
+use idl_gen::game_backend::*;
+use volo_grpc::{server::ServiceBuilder, Request, Response, Status};
+
+struct S;
 
 pub mod biz;
 pub mod common;
 pub mod handler;
 pub mod rpc;
+
+#[tokio::main]
+async fn main() {
+    log4rs::init_file("log4rs.game-backend.yaml", Default::default()).unwrap();
+
+    let addr: SocketAddr = "127.0.0.1:13201".parse().unwrap();
+    let addr = volo::net::Address::from(addr);
+
+    volo_grpc::server::Server::new()
+        .add_service(
+            ServiceBuilder::new(idl_gen::game_backend::GameBackendServiceServer::new(S)).build(),
+        )
+        .run(addr)
+        .await
+        .unwrap();
+}
 
 impl idl_gen::game_backend::GameBackendService for S {
     async fn join_room(

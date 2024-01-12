@@ -14,9 +14,9 @@ enum ProgramArgs {
 #[tokio::main]
 async fn main() {
     if cfg!(debug_assertions) {
-        log4rs::init_file("log4rs.debug.yaml", Default::default()).unwrap();
+        log4rs::init_file("log4rs.cronjob.debug.yaml", Default::default()).unwrap();
     } else {
-        log4rs::init_file("log4rs.yaml", Default::default()).unwrap();
+        log4rs::init_file("log4rs.cronjob.yaml", Default::default()).unwrap();
     }
 
     let arg = ProgramArgs::parse();
