@@ -53,6 +53,9 @@ pub fn init_websocket() -> tokio::task::JoinHandle<()> {
 }
 
 pub fn init_rocket() -> tokio::task::JoinHandle<()> {
+    use rocket::figment::providers::{Format, Toml};
+    use rocket::Config;
+
     tokio::spawn(async {
         let routes = routes![
             home_events,
@@ -64,6 +67,7 @@ pub fn init_rocket() -> tokio::task::JoinHandle<()> {
             oss_file_obtain
         ];
         rocket::build()
+            .configure(Config::figment().merge(Toml::file("Rocket.bss.toml").nested()))
             .mount("/api/", routes)
             .launch()
             .await
