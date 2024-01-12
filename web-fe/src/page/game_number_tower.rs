@@ -483,7 +483,7 @@ fn calc_best_atk(
         if atk > best_atk {
             best_atk = atk;
             best_order = order;
-            best_order.insert(0, tower[i].clone());
+            best_order.insert(0, tower[i]);
         }
     }
 

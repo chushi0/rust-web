@@ -24,7 +24,7 @@ struct CardMessageData<'a> {
     pub template_variable: HashMap<String, String>,
 }
 
-pub async fn send_plain_message<'a>(content: &'a str) -> Result<()> {
+pub async fn send_plain_message(content: &str) -> Result<()> {
     let content = serde_json::to_string(&PlainMessage { text: content })?;
 
     api::message::send_message(

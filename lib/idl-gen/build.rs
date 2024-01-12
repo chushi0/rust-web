@@ -3,7 +3,7 @@ fn main() {
 
     protobuf_codegen::Codegen::new()
         .pure()
-        .includes(&["../../idl"])
+        .includes(["../../idl"])
         .input("../../idl/bss_websocket_client.proto")
         .input("../../idl/game_data/bss_heartstone.proto")
         .cargo_out_dir("protos")

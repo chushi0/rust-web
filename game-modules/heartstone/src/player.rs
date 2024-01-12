@@ -84,13 +84,19 @@ impl PlayerTrait for SyncHandle<Player> {
         loop {
             let action = player.behavior.next_action(game, &player).await;
             let check_action = match action {
-                PlayerTurnAction::PlayCard { hand_index, target } => {
+                PlayerTurnAction::PlayCard {
+                    hand_index: _,
+                    target: _,
+                } => {
                     // 检查牌存在
                     // 检查法力值足够
                     // 检查选择目标
                     true
                 }
-                PlayerTurnAction::MinionAttack { attacker, target } => {
+                PlayerTurnAction::MinionAttack {
+                    attacker: _,
+                    target: _,
+                } => {
                     // 检查攻击随从存在
                     // 检查目标存在
                     // 检查当前回合尚未攻击
@@ -217,9 +223,9 @@ impl Default for SocketPlayerBehavior {
 
 #[async_trait::async_trait]
 impl PlayerBehavior for SocketPlayerBehavior {
-    async fn assign_uuid(&self, uuid: u64) {}
+    async fn assign_uuid(&self, _uuid: u64) {}
 
-    async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
+    async fn next_action(&self, _game: &Game, _player: &Player) -> PlayerTurnAction {
         self.turn_action_channel.increase_version().await;
         self.turn_action_channel
             .recv()
@@ -231,9 +237,9 @@ impl PlayerBehavior for SocketPlayerBehavior {
 
 #[async_trait::async_trait]
 impl PlayerBehavior for AIPlayerBehavior {
-    async fn assign_uuid(&self, uuid: u64) {}
+    async fn assign_uuid(&self, _uuid: u64) {}
 
-    async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
+    async fn next_action(&self, _game: &Game, _player: &Player) -> PlayerTurnAction {
         PlayerTurnAction::EndTurn
     }
 }

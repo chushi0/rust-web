@@ -55,7 +55,7 @@ async fn main() {
     };
 
     let mut players = Vec::new();
-    for i in 0..4 {
+    for _ in 0..4 {
         // 牌库是每张牌（衍生牌除外）各一张
         let deck = card_pool
             .iter()
@@ -116,11 +116,9 @@ impl GameNotifier for StdNotifier {
                 fightline_desc(player.get_hero().await.fightline().await)
             );
             println!("  手牌：");
-            let mut index = 0;
-            for card in player.hand_cards().await {
+            for (index, card) in player.hand_cards().await.into_iter().enumerate() {
                 let model = card.get().await.model().clone();
                 println!("    #{index} {}", model.card.name);
-                index += 1;
             }
         }
         println!("----------------------------------------");
@@ -232,24 +230,20 @@ impl GameNotifier for StdNotifier {
     }
 
     fn deal_damage(&self, target: Target, damage: i64) {
-        if damage > 0 {
-            match target {
-                Target::Minion(target_minion) => {
-                    println!("随从 [{}] 受到伤害，生命值 -{}", target_minion, damage)
-                }
-                Target::Hero(target_hero) => {
-                    println!("英雄 [{}] 受到伤害生命值 -{}", target_hero, damage)
-                }
+        match (damage.cmp(&0), target) {
+            (std::cmp::Ordering::Less, Target::Minion(target_minion)) => {
+                println!("随从 [{}] 受到治疗生命值 +{}", target_minion, -damage)
             }
-        } else if damage < 0 {
-            match target {
-                Target::Minion(target_minion) => {
-                    println!("随从 [{}] 受到治疗生命值 +{}", target_minion, -damage)
-                }
-                Target::Hero(target_hero) => {
-                    println!("英雄 [{}] 受到治疗生命值 +{}", target_hero, -damage)
-                }
+            (std::cmp::Ordering::Less, Target::Hero(target_hero)) => {
+                println!("英雄 [{}] 受到治疗生命值 +{}", target_hero, -damage)
             }
+            (std::cmp::Ordering::Greater, Target::Minion(target_minion)) => {
+                println!("随从 [{}] 受到伤害，生命值 -{}", target_minion, damage)
+            }
+            (std::cmp::Ordering::Greater, Target::Hero(target_hero)) => {
+                println!("英雄 [{}] 受到伤害生命值 -{}", target_hero, damage)
+            }
+            (std::cmp::Ordering::Equal, _) => unreachable!(),
         }
     }
     fn buff(&self, target: Target, buff: Buff) {
@@ -276,9 +270,9 @@ impl GameNotifier for StdNotifier {
 
 #[async_trait::async_trait]
 impl PlayerBehavior for StdBehavior {
-    async fn assign_uuid(&self, uuid: u64) {}
+    async fn assign_uuid(&self, _uuid: u64) {}
 
-    async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction {
+    async fn next_action(&self, _game: &Game, _player: &Player) -> PlayerTurnAction {
         loop {
             let turn_action_type: u8 = Input::new()
                 .with_prompt("输入回合指令(1: 使用卡牌, 2: 随从攻击, 0: 结束回合) > ")

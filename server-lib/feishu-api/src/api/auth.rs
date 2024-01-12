@@ -21,8 +21,8 @@ pub struct TenantAccessToken {
     pub expire: u64,
 }
 
-const APP_ID: &'static str = env!("RUST_WEB_FEISHU_APP_ID");
-const APP_SECRET: &'static str = env!("RUST_WEB_FEISHU_APP_SECRET");
+const APP_ID: &str = env!("RUST_WEB_FEISHU_APP_ID");
+const APP_SECRET: &str = env!("RUST_WEB_FEISHU_APP_SECRET");
 
 pub async fn get_tenant_access_token() -> Result<TenantAccessToken> {
     let url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal";

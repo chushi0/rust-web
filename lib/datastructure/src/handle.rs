@@ -139,3 +139,9 @@ impl<T> SyncChannel<T> {
         }
     }
 }
+
+impl<T> Default for SyncChannel<T> {
+    fn default() -> Self {
+        Self::new()
+    }
+}

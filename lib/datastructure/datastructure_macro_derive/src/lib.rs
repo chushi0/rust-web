@@ -1,6 +1,5 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn;
 
 #[proc_macro_derive(TwoValue)]
 pub fn two_value_enum_derive(input: TokenStream) -> TokenStream {
