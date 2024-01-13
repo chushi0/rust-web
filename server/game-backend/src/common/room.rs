@@ -457,7 +457,6 @@ impl Room {
         log::debug!("room {:?} checked start condition", self.room_key);
     }
 
-    #[cfg(test)]
     pub fn biz_room(&self) -> Arc<Box<dyn BizRoom>> {
         self.biz_room.clone()
     }
@@ -489,6 +488,10 @@ impl Room {
     pub fn new_rng(&mut self) -> ChaCha8Rng {
         let seed = Uniform::new(u64::MIN, u64::MAX).sample(&mut self.rng);
         ChaCha8Rng::seed_from_u64(seed)
+    }
+
+    pub fn is_in_game(&self) -> bool {
+        self.player_lock
     }
 }
 

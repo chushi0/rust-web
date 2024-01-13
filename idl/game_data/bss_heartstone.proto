@@ -107,8 +107,7 @@ message PlayerUseCardAction {
 // 玩家操作随从
 message PlayerOperateMinionAction {
   uint64 minion_id = 1;
-  bool attack_hero = 2;
-  int32 attack_id = 3;
+  Target target = 2;
 }
 
 // 玩家使用卡事件

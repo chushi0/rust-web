@@ -1,7 +1,7 @@
 use core::time;
 use idl_gen::bss_websocket_client::BoxProtobufPayload;
 use protobuf::Message;
-use std::{collections::HashMap, marker::PhantomData};
+use std::{collections::HashMap, future::Future, marker::PhantomData};
 use tokio::sync::{
     mpsc::{self, error::SendError, UnboundedReceiver},
     Mutex,
@@ -35,7 +35,7 @@ enum BoxSender<T> {
 }
 
 impl InputManager {
-    pub async fn wait_for_input<T, F, L>(
+    pub async fn wait_for_input<T, F, L, A>(
         &self,
         user_id: i64,
         timeout: time::Duration,
@@ -45,7 +45,8 @@ impl InputManager {
     where
         T: Message,
         F: Fn() -> T,
-        L: Fn(),
+        A: Future<Output = ()> + Send,
+        L: Fn() -> A + Send,
     {
         let (sender, mut recv) = mpsc::channel(1);
 
@@ -58,7 +59,7 @@ impl InputManager {
         self.list.lock().await.insert(user_id, input);
 
         if let Some(on_start_listen_input) = on_start_listen_input {
-            on_start_listen_input();
+            on_start_listen_input().await;
         }
 
         tokio::select! {
@@ -123,7 +124,9 @@ impl InputManager {
                 );
                 return;
             }
-            let _ = input.sender.send(data.payload).await; // ignore error
+            if let Err(e) = input.sender.send(data.payload).await {
+                log::error!("send input error: {e}")
+            }
             if input.oneshot {
                 list.remove(&user_id);
             }

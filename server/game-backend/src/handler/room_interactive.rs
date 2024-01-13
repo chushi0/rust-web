@@ -1,4 +1,4 @@
-use idl_gen::game_backend::*;
+use idl_gen::{bss_websocket_client::BoxProtobufPayload, game_backend::*};
 use volo_grpc::{Code, Request, Response, Status};
 
 use crate::common::room;
@@ -71,6 +71,38 @@ pub async fn handle_send_room_chat(
     .await?;
 
     Ok(Response::new(SendGameChatResponse::default()))
+}
+
+pub async fn handle_submit_player_action(
+    req: Request<SubmitPlayerActionRequest>,
+) -> Result<Response<SubmitPlayerActionResponse>, Status> {
+    let req = req.into_inner();
+    check_request(req.user_id, req.room_id)?;
+
+    let room = room::get_room(req.game_type, req.room_id)
+        .await
+        .ok_or_else(|| Status::new(Code::NotFound, "missing room"))?;
+
+    let room = room.lock().await;
+    if !room.is_in_game() {
+        return Err(Status::new(Code::Unavailable, "game is not start"));
+    }
+    let biz_room = room.biz_room();
+    // release room lock
+    drop(room);
+
+    biz_room
+        .player_input(
+            req.user_id,
+            BoxProtobufPayload {
+                name: req.action_name.into(),
+                payload: req.payload.into(),
+                ..Default::default()
+            },
+        )
+        .await;
+
+    Ok(Response::new(SubmitPlayerActionResponse::default()))
 }
 
 fn check_request(user_id: i64, room_id: i32) -> Result<(), Status> {

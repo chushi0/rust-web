@@ -63,4 +63,11 @@ impl idl_gen::game_backend::GameBackendService for S {
     ) -> Result<Response<SendGameChatResponse>, Status> {
         handler::room_interactive::handle_send_room_chat(req).await
     }
+
+    async fn submit_player_action(
+        &self,
+        req: Request<SubmitPlayerActionRequest>,
+    ) -> Result<Response<SubmitPlayerActionResponse>, Status> {
+        handler::room_interactive::handle_submit_player_action(req).await
+    }
 }

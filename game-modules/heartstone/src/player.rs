@@ -200,6 +200,10 @@ impl Player {
         };
         SyncHandle::new(player)
     }
+
+    pub fn custom_id(&self) -> i64 {
+        self.custom_id
+    }
 }
 
 pub struct SocketPlayerBehavior {

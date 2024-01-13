@@ -97,6 +97,7 @@ impl GameBiz {
             MateRoomRequest => mate_room: JoinRoomResponse,
             LeaveRoomRequest => leave_room: LeaveRoomResponse,
             RoomPlayerAction => room_player_action,
+            GameAction => game_action,
         }
 
         Ok(())
@@ -361,6 +362,27 @@ impl GameBiz {
             }
         }
 
+        Ok(())
+    }
+
+    async fn game_action(&mut self, req: GameAction) -> Result<()> {
+        let Some(room) = self.room else {
+            return Err(anyhow!("user has not join any room"));
+        };
+
+        let user_id = room.user_id;
+        let game_type = game_backend::GameType::try_from(room.game_type)?;
+        let room_id = room.room_id;
+
+        let req = game_backend::SubmitPlayerActionRequest {
+            user_id,
+            game_type,
+            room_id,
+            action_name: req.action_type.into(),
+            payload: req.payload.into(),
+        };
+
+        rpc::game::client().submit_player_action(req).await?;
         Ok(())
     }
 
