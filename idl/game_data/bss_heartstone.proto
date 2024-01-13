@@ -51,11 +51,14 @@ message MyTurnActionAcceptEvent {}
 message MyTurnEndEvent {}
 
 // 进入玩家回合
-message PlayerTurnEvent { int32 mana_point = 1; }
+message PlayerTurnEvent {
+  int32 player_index = 1;
+  int32 mana_point = 2;
+}
 
 // 目标
 message Target {
-  optional int32 mission_id = 1;
+  optional int32 minion_id = 1;
   optional int32 player = 2;
 }
 
@@ -88,7 +91,7 @@ message PlayerUseCardAction {
 
 // 玩家操作随从
 message PlayerOperateMinionAction {
-  int32 minion_id = 1;
+  int64 minion_id = 1;
   bool attack_hero = 2;
   int32 attack_id = 3;
 }
@@ -100,13 +103,15 @@ message PlayerUseCardEvent {
 }
 
 // 随从入场事件
-message MissionEnterEvent {
-  int32 mission_id = 1;
-  int32 mission_type = 2;
+message MinionEnterEvent {
+  int64 minion_id = 1;
+  string minion_type = 2;
+  int32 group = 3;
+  int32 index = 4;
 }
 
 // 随从离场事件
-message MissionRemoveEvent { int32 mission_id = 1; }
+message MinionRemoveEvent { int64 minion_id = 1; }
 
 // 特殊效果处理
 message SpecialEffectEvent { repeated SpecialEffect list = 1; }
@@ -124,37 +129,36 @@ message DamageEffect {
 }
 
 // 抽牌
+enum DrawCardResult {
+  Ok = 1;
+  Fire = 2;
+  Tired = 3;
+}
+
 message DrawCardEffect {
   int32 player = 1;
-  repeated Card card = 2;
-  int32 card_count = 3;
-  int32 overdraw_count = 4;
+  optional Card card = 2;
+  DrawCardResult draw_card_result = 3;
 }
 
-// 战吼（随从的前置、后置并入此结构中）
-message BattlecryEvent {
-  Target target = 1;
-  repeated SpecialEffect effect = 2;
+// 随从效果
+enum MinionEffect {
+  Other = 1;
+  Battlecry = 2;
+  Deathrattle = 3;
 }
 
-// 亡语
-message DeathrattleEvent {
-  Target target = 1;
-  repeated SpecialEffect effect = 2;
+message MinionEffectEvent {
+  int64 minion_id = 1;
+  MinionEffect minion_effect = 2;
 }
 
 // 交换前后场
 message SwapFrontBackEffect { repeated int32 players = 1; }
 
-// 随从攻击
-message MissionAttackAction {
-  int32 mission_id = 1;
-  Target target = 2;
-}
-
 // 随从攻击事件
-message MissionAttackEvent {
-  int32 mission_id = 1;
+message MinionAttackEvent {
+  int64 minion_id = 1;
   Target target = 2;
 }
 

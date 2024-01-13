@@ -77,5 +77,15 @@ message LeaveRoomRequest {}
 
 message LeaveRoomResponse {
   int32 code = 1;
-  int32 message = 2;
+  string message = 2;
+}
+
+message GameEvent {
+  string event_type = 1;
+  bytes payload = 2;
+}
+
+message GameAction {
+  string action_type = 1;
+  bytes payload = 2;
 }

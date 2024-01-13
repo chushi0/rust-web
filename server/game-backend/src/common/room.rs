@@ -4,6 +4,7 @@ use idl_gen::bss_websocket::SendRoomChatRequest;
 use idl_gen::bss_websocket::SendRoomCommonChangeRequest;
 use idl_gen::bss_websocket_client::BoxProtobufPayload;
 use idl_gen::game_backend::GameType;
+use log::info;
 use log::warn;
 use pilota::FastStr;
 use rand::distributions::Uniform;
@@ -89,6 +90,7 @@ pub enum RoomError {
 }
 
 pub async fn create_room(game_type: GameType) -> SafeRoom {
+    info!("start to create room...");
     let range = Uniform::new(MIN_ROOM_ID, MAX_ROOM_ID);
 
     let mut rooms = ROOMS.lock().await;
@@ -120,6 +122,7 @@ pub async fn create_room(game_type: GameType) -> SafeRoom {
 
     let room = Arc::new(Mutex::new(room));
     rooms.insert(room_key, room.clone());
+    info!("room created: {room_key:?}");
 
     room
 }
@@ -249,8 +252,10 @@ impl Room {
             return;
         }
 
+        info!("start to release room...");
         let mut rooms = ROOMS.lock().await;
         rooms.remove(&self.room_key);
+        info!("room released: {:?}", self.room_key);
         self.room_key.room_id = -1;
     }
 

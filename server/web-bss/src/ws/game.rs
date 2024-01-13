@@ -3,6 +3,7 @@ use crate::rpc;
 use crate::service;
 use crate::util::protobuf::pack_message;
 use anyhow::anyhow;
+use anyhow::bail;
 use anyhow::Result;
 use idl_gen::bss_websocket_client::*;
 use idl_gen::game_backend;
@@ -51,9 +52,8 @@ impl WsBiz for GameBiz {
 
     async fn on_close(&mut self) {
         if let Some(room) = &self.room {
-            let mut rooms = ROOMS.write().await;
-            rooms.remove(room);
-
+            info!("connection reset with leaving room: {room:?}");
+            Self::release_room_connection(room).await;
             let leave_resp = Self::try_remove_from_room(room).await;
             log::info!("try remove from room: {:?}", leave_resp);
         }
@@ -95,6 +95,7 @@ impl GameBiz {
             CreateRoomRequest => create_room: JoinRoomResponse,
             JoinRoomRequest => join_room: JoinRoomResponse,
             MateRoomRequest => mate_room: JoinRoomResponse,
+            LeaveRoomRequest => leave_room: LeaveRoomResponse,
             RoomPlayerAction => room_player_action,
         }
 
@@ -303,6 +304,22 @@ impl GameBiz {
         Ok(resp)
     }
 
+    async fn leave_room(&mut self, _req: LeaveRoomRequest) -> Result<LeaveRoomResponse> {
+        let Some(room) = self.room else {
+            bail!("user has not join any room");
+        };
+
+        Self::try_remove_from_room(&room).await?;
+        Self::release_room_connection(&room).await;
+        self.room = None;
+
+        Ok(LeaveRoomResponse {
+            code: 0,
+            message: "success".to_string(),
+            ..Default::default()
+        })
+    }
+
     async fn room_player_action(&mut self, req: RoomPlayerAction) -> Result<()> {
         let Some(room) = self.room else {
             return Err(anyhow!("user has not join any room"));
@@ -355,6 +372,11 @@ impl GameBiz {
         };
         rpc::game::client().leave_room(req).await?;
         Ok(())
+    }
+
+    async fn release_room_connection(room: &RoomKey) {
+        let mut rooms = ROOMS.write().await;
+        rooms.remove(room);
     }
 }
 
