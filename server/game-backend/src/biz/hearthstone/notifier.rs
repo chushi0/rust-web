@@ -64,7 +64,7 @@ impl NotifierInternal {
                 )
             })
             .await
-            .filter(|(id, _uuid)| *id > 0)
+            .filter(|(_uuid, id)| *id > 0)
             .async_for_each(|(uuid, id)| {
                 let events = events
                     .iter()
