@@ -239,6 +239,8 @@ impl NotifyEvent {
                 minion_type: minion.model().card.rowid,
                 group: *camp as i32,
                 index: 0,
+                atk: minion.atk(),
+                hp: minion.hp(),
                 ..Default::default()
             }),
             NotifyEvent::MinionBattlecry { minion } => pack_game_event(MinionEffectEvent {

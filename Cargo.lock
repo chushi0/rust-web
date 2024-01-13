@@ -1349,9 +1349,13 @@ name = "heartstone-cli"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "clap",
  "datastructure",
  "dialoguer",
  "heartstone",
+ "idl-gen",
+ "lazy_static",
+ "protobuf",
  "serde",
  "serde_json",
  "tokio",
