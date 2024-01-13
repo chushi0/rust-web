@@ -7,11 +7,12 @@ use tokio::sync::{
     Mutex,
 };
 
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct InputManager {
     list: Mutex<HashMap<i64, Input>>,
 }
 
+#[derive(Debug)]
 struct Input {
     expect: String,
     sender: BoxSender<Vec<u8>>,
@@ -27,6 +28,7 @@ where
     _marker: PhantomData<T>,
 }
 
+#[derive(Debug)]
 enum BoxSender<T> {
     Sender(tokio::sync::mpsc::Sender<T>),
     UnboundedSender(tokio::sync::mpsc::UnboundedSender<T>),

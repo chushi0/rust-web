@@ -31,6 +31,7 @@ impl Default for Config {
 
 #[derive(Debug)]
 pub struct PlayerConfig {
+    pub custom_id: i64,
     pub max_hero_hp: u32,
     pub behavior: Arc<dyn PlayerBehavior>,
     pub camp: Option<Camp>,
@@ -40,6 +41,7 @@ pub struct PlayerConfig {
 impl Default for PlayerConfig {
     fn default() -> Self {
         Self {
+            custom_id: 0,
             max_hero_hp: 30,
             behavior: Arc::new(AIPlayerBehavior::default()),
             camp: Default::default(),

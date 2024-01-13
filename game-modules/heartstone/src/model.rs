@@ -177,8 +177,7 @@ impl Damageable for SyncHandle<Hero> {
 
 #[derive(Debug, Clone)]
 pub struct Buff {
-    #[allow(dead_code)]
-    buff_type: i32, // 保留字段
+    buff_type: i32,
     atk_boost: i32,
     hp_boost: i32,
 }
@@ -197,6 +196,10 @@ impl Buff {
 
     pub fn hp_boost(&self) -> i32 {
         self.hp_boost
+    }
+
+    pub fn buff_type(&self) -> i32 {
+        self.buff_type
     }
 }
 

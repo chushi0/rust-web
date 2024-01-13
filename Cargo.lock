@@ -995,6 +995,7 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "datastructure",
+ "heartstone",
  "idl-gen",
  "lazy_static",
  "log",

@@ -41,8 +41,12 @@ message SendGameEventRequest {
   repeated int64 user_id = 1;
   int32 game_type = 2;
   int32 room_id = 3;
-  string event_type = 4;
-  string event_payload = 5;
+  repeated GameEvent event_list = 4;
+}
+
+message GameEvent {
+  string event_type = 1;
+  bytes payload = 2;
 }
 
 message SendGameEventResponse {

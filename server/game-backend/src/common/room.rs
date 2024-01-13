@@ -35,6 +35,7 @@ pub struct RoomKey {
     pub room_id: i32,
 }
 
+#[derive(Debug)]
 pub struct Room {
     room_key: RoomKey,
 
@@ -67,7 +68,7 @@ pub struct RoomPlayer {
 }
 
 #[async_trait]
-pub trait BizRoom: Send + Sync {
+pub trait BizRoom: Debug + Send + Sync {
     /// 游戏主逻辑
     async fn do_game_logic(&self, safe_room: SafeRoom);
 

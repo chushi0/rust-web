@@ -44,22 +44,37 @@ message ReplacePrepareCardAction { repeated int32 card_index = 1; }
 // 我的回合，进行行动
 message MyTurnStartEvent {}
 
-// 我的回合行动已被服务器处理
-message MyTurnActionAcceptEvent {}
-
 // 我的回合结束，无法行动
 message MyTurnEndEvent {}
 
-// 进入玩家回合
+enum TurnTypeEnum {
+  PlayerTurn = 1;
+  SwapTurn = 2;
+}
+
+// 新的回合
+message NewTurnEvent {
+  TurnTypeEnum turn_type = 1;
+  optional PlayerTurnEvent player_turn = 2;
+  optional SwapTurnEvent swap_turn = 3;
+}
+
 message PlayerTurnEvent {
-  int32 player_index = 1;
-  int32 mana_point = 2;
+  uint64 player_uuid = 1;
+}
+
+message SwapTurnEvent {}
+
+// 玩家法力值变化
+message PlayerManaChange {
+  uint64 player_uuid = 1;
+  int32 mana = 2;
 }
 
 // 目标
 message Target {
-  optional int32 minion_id = 1;
-  optional int32 player = 2;
+  optional uint64 minion_id = 1;
+  optional uint64 player = 2;
 }
 
 enum PlayerTurnActionEnum {
@@ -91,41 +106,38 @@ message PlayerUseCardAction {
 
 // 玩家操作随从
 message PlayerOperateMinionAction {
-  int64 minion_id = 1;
+  uint64 minion_id = 1;
   bool attack_hero = 2;
   int32 attack_id = 3;
 }
 
 // 玩家使用卡事件
 message PlayerUseCardEvent {
-  int32 card_index = 1;
-  Card card = 2;
+  uint64 player_uuid = 1;
+  int32 card_index = 2;
+  Card card = 3;
+  int32 cost_mana = 4;
+}
+
+// 玩家使用卡事件完毕
+message PlayerUseCardEndEvent {
 }
 
 // 随从入场事件
 message MinionEnterEvent {
-  int64 minion_id = 1;
-  string minion_type = 2;
+  uint64 minion_id = 1;
+  int64 minion_type = 2;
   int32 group = 3;
   int32 index = 4;
 }
 
 // 随从离场事件
-message MinionRemoveEvent { int64 minion_id = 1; }
-
-// 特殊效果处理
-message SpecialEffectEvent { repeated SpecialEffect list = 1; }
-
-// 特殊效果
-message SpecialEffect {
-  string effect_name = 1;
-  bytes payload = 2;
-}
+message MinionRemoveEvent { uint64 minion_id = 1; }
 
 // 伤害
-message DamageEffect {
+message DamageEvent {
   Target target = 1;
-  int32 damage = 2;
+  int64 damage = 2;
 }
 
 // 抽牌
@@ -135,10 +147,11 @@ enum DrawCardResult {
   Tired = 3;
 }
 
-message DrawCardEffect {
-  int32 player = 1;
+message DrawCardEvent {
+  uint64 player_uuid = 1;
   optional Card card = 2;
   DrawCardResult draw_card_result = 3;
+  optional uint32 tired = 4;
 }
 
 // 随从效果
@@ -149,21 +162,36 @@ enum MinionEffect {
 }
 
 message MinionEffectEvent {
-  int64 minion_id = 1;
+  uint64 minion_id = 1;
   MinionEffect minion_effect = 2;
 }
 
 // 交换前后场
-message SwapFrontBackEffect { repeated int32 players = 1; }
+message SwapFrontBackEvent {
+  uint64 player_uuid = 1;
+  Position new_position = 2;
+}
 
 // 随从攻击事件
 message MinionAttackEvent {
-  int64 minion_id = 1;
+  uint64 minion_id = 1;
   Target target = 2;
 }
 
+// buff
+message Buff {
+  int32 buff_type = 1;
+  int32 atk_boost = 2;
+  int32 hp_boost = 3;
+}
+
+message BuffEvent {
+  Target target = 1;
+  Buff buff = 2;
+}
+
 // 英雄死亡
-message HeroDeathEvent { int32 player = 1; }
+message HeroDeathEvent { uint64 player = 1; }
 
 // 游戏结束
 message GameEndEvent {

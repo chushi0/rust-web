@@ -19,6 +19,7 @@ pub trait PlayerBehavior: Debug + Send + Sync {
 
 #[derive(Debug)]
 pub struct Player {
+    custom_id: i64,
     camp: Camp,
 
     behavior: Arc<dyn PlayerBehavior>,
@@ -74,6 +75,8 @@ pub trait PlayerTrait {
     async fn uuid(&self) -> u64 {
         self.get_hero().await.uuid().await
     }
+
+    async fn get_custom_id(&self) -> i64;
 }
 
 #[async_trait::async_trait]
@@ -160,6 +163,10 @@ impl PlayerTrait for SyncHandle<Player> {
     async fn hand_cards(&self) -> Vec<SyncHandle<Card>> {
         self.get().await.hand.cards().await
     }
+
+    async fn get_custom_id(&self) -> i64 {
+        self.get().await.custom_id
+    }
 }
 
 impl Player {
@@ -179,6 +186,8 @@ impl Player {
         behavior.assign_uuid(hero_uuid).await;
 
         let player = Player {
+            custom_id: config.custom_id,
+
             camp,
             behavior,
             hero,

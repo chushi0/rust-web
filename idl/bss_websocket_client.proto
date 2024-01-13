@@ -85,6 +85,10 @@ message GameEvent {
   bytes payload = 2;
 }
 
+message GameEventList {
+  repeated GameEvent list = 1;
+}
+
 message GameAction {
   string action_type = 1;
   bytes payload = 2;

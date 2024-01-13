@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [dependencies]
 datastructure = {path = "../../lib/datastructure"}
+heartstone = {path = "../../game-modules/heartstone"}
 idl-gen = {path = "../../lib/idl-gen"}
 web-db = {path = "../../server-lib/web-db"}
 
