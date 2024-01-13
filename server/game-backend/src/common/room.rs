@@ -525,6 +525,7 @@ async fn room_runner(biz_room: Arc<Box<dyn BizRoom>>, safe_room: SafeRoom) {
     room.join_players
         .iter_mut()
         .for_each(|player| player.ready = false);
+    room.broadcast_user_change().await;
 
     if room.join_players.is_empty() {
         room.release().await;
