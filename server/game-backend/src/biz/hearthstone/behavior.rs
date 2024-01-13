@@ -61,7 +61,6 @@ impl PlayerBehavior for SocketPlayerBehavior {
                     event_type: MyTurnStartEvent::NAME.into(),
                     payload: payload.into(),
                 }],
-                ..Default::default()
             };
 
             if let Err(err) = rpc::bss::client().send_game_event(req).await {
@@ -86,7 +85,6 @@ impl PlayerBehavior for SocketPlayerBehavior {
                     event_type: MyTurnStartEvent::NAME.into(),
                     payload: payload.into(),
                 }],
-                ..Default::default()
             };
 
             if let Err(err) = rpc::bss::client().send_game_event(req).await {
@@ -119,7 +117,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
                     let target = action.target.map(parse_target).unwrap_or(None);
                     PlayerTurnAction::PlayCard {
                         hand_index: action.card_index as usize,
-                        target: target,
+                        target,
                     }
                 })
                 .unwrap_or(PlayerTurnAction::EndTurn),

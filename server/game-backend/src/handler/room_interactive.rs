@@ -87,11 +87,10 @@ pub async fn handle_submit_player_action(
     if !room.is_in_game() {
         return Err(Status::new(Code::Unavailable, "game is not start"));
     }
-    if room
+    if !room
         .players()
         .iter()
-        .find(|player| player.get_user_id() == req.user_id)
-        .is_none()
+        .any(|player| player.get_user_id() == req.user_id)
     {
         return Err(Status::new(Code::NotFound, "user is not in this room"));
     }

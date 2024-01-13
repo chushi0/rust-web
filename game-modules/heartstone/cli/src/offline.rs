@@ -230,7 +230,7 @@ impl GameNotifier for StdNotifier {
                 card_id: card.model().card.rowid,
                 ..Default::default()
             }),
-            cost_mana: cost_mana,
+            cost_mana,
             ..Default::default()
         };
 
@@ -311,7 +311,7 @@ impl GameNotifier for StdNotifier {
     fn deal_damage(&self, target: Target, damage: i64) {
         let event = DamageEvent {
             target: MessageField::some(pack_target(target)),
-            damage: damage,
+            damage,
             ..Default::default()
         };
 
