@@ -99,7 +99,7 @@ impl GameNotifier for StdNotifier {
                             .into_iter()
                             .async_map(|card| async move {
                                 idl_gen::bss_heartstone::Card {
-                                    card_id: card.get().await.model().card.rowid,
+                                    card_code: card.get().await.model().card.code.clone(),
                                     ..Default::default()
                                 }
                             })
@@ -133,7 +133,10 @@ impl GameNotifier for StdNotifier {
                 .async_map(|(camp, minion)| async move {
                     MinionStatus {
                         uuid: minion.uuid().await,
-                        type_id: minion.model().await.card.rowid,
+                        card: MessageField::some(idl_gen::bss_heartstone::Card {
+                            card_code: minion.model().await.card.code.clone(),
+                            ..Default::default()
+                        }),
                         atk: minion.atk().await,
                         hp: minion.hp().await,
                         buff_list: minion
@@ -141,7 +144,6 @@ impl GameNotifier for StdNotifier {
                             .await
                             .iter()
                             .map(|buff| idl_gen::bss_heartstone::Buff {
-                                buff_type: buff.buff_type(),
                                 atk_boost: buff.atk_boost(),
                                 hp_boost: buff.hp_boost(),
                                 ..Default::default()
@@ -195,7 +197,7 @@ impl GameNotifier for StdNotifier {
             PlayerDrawCard::Tired(_) => None,
         }
         .map(|card| idl_gen::bss_heartstone::Card {
-            card_id: card.model().card.rowid,
+            card_code: card.model().card.code.clone(),
             ..Default::default()
         });
 
@@ -227,7 +229,7 @@ impl GameNotifier for StdNotifier {
             player_uuid: player,
             card_index: 0,
             card: MessageField::some(idl_gen::bss_heartstone::Card {
-                card_id: card.model().card.rowid,
+                card_code: card.model().card.code.clone(),
                 ..Default::default()
             }),
             cost_mana,
@@ -258,7 +260,10 @@ impl GameNotifier for StdNotifier {
     fn minion_summon(&self, minion: Minion, camp: Camp) {
         let event = MinionEnterEvent {
             minion_id: minion.uuid(),
-            minion_type: minion.model().card.rowid,
+            card: MessageField::some(idl_gen::bss_heartstone::Card {
+                card_code: minion.model().card.code.clone(),
+                ..Default::default()
+            }),
             group: camp as i32,
             index: 0,
             atk: minion.atk(),
@@ -322,7 +327,6 @@ impl GameNotifier for StdNotifier {
         let event = BuffEvent {
             target: MessageField::some(pack_target(target)),
             buff: MessageField::some(idl_gen::bss_heartstone::Buff {
-                buff_type: buff.buff_type(),
                 atk_boost: buff.atk_boost(),
                 hp_boost: buff.hp_boost(),
                 ..Default::default()

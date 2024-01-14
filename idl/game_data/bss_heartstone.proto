@@ -33,7 +33,7 @@ message ServerDecidePlayerPositionEvent {
 }
 
 // 卡牌
-message Card { int64 card_id = 1; }
+message Card { string card_code = 1; }
 
 // 抽取起始卡牌
 message DrawPrepareCardEvent { repeated Card cards = 1; }
@@ -125,7 +125,7 @@ message PlayerUseCardEndEvent {
 // 随从入场事件
 message MinionEnterEvent {
   uint64 minion_id = 1;
-  int64 minion_type = 2;
+  Card card = 2;
   int32 group = 3;
   int32 index = 4;
   int32 atk = 5;
@@ -181,9 +181,8 @@ message MinionAttackEvent {
 
 // buff
 message Buff {
-  int32 buff_type = 1;
-  int32 atk_boost = 2;
-  int32 hp_boost = 3;
+  int32 atk_boost = 1;
+  int32 hp_boost = 2;
 }
 
 message BuffEvent {
@@ -221,7 +220,7 @@ message PlayerStatus {
 
 message MinionStatus {
   uint64 uuid = 1;
-  int64 type_id = 2;
+  Card card = 2;
   int32 atk = 3;
   int64 hp = 4;
   repeated Buff buff_list = 5;

@@ -64,8 +64,8 @@ impl Room {
     async fn create_game(&self, safe_room: SafeRoom) -> Result<Game> {
         let card_pool = Self::get_all_card().await?;
         let card_name_map: HashMap<_, _> = card_pool
-            .iter()
-            .map(|(_, model)| (model.card.code.clone(), model.clone()))
+            .values()
+            .map(|model| (model.card.code.clone(), model.clone()))
             .collect();
 
         let room = safe_room.lock().await;

@@ -191,7 +191,7 @@ impl NotifyEvent {
                     PlayerDrawCard::Tired(_) => None,
                 }
                 .map(|card| Card {
-                    card_id: card.model().card.rowid,
+                    card_code: card.model().card.code.clone(),
                     ..Default::default()
                 });
 
@@ -223,7 +223,7 @@ impl NotifyEvent {
                 player_uuid: *player,
                 card_index: 0,
                 card: MessageField::some(Card {
-                    card_id: card.model().card.rowid,
+                    card_code: card.model().card.code.clone(),
                     ..Default::default()
                 }),
                 cost_mana: *cost_mana,
@@ -244,7 +244,10 @@ impl NotifyEvent {
             }),
             NotifyEvent::MinionSummon { minion, camp } => pack_game_event(MinionEnterEvent {
                 minion_id: minion.uuid(),
-                minion_type: minion.model().card.rowid,
+                card: MessageField::some(Card {
+                    card_code: minion.model().card.code.clone(),
+                    ..Default::default()
+                }),
                 group: *camp as i32,
                 index: 0,
                 atk: minion.atk(),
@@ -278,7 +281,6 @@ impl NotifyEvent {
             NotifyEvent::Buff { target, buff } => pack_game_event(BuffEvent {
                 target: MessageField::some(pack_target(target)),
                 buff: MessageField::some(Buff {
-                    buff_type: buff.buff_type(),
                     atk_boost: buff.atk_boost(),
                     hp_boost: buff.hp_boost(),
                     ..Default::default()
@@ -306,7 +308,7 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
                             .into_iter()
                             .async_map(|card| async move {
                                 idl_gen::bss_heartstone::Card {
-                                    card_id: card.get().await.model().card.rowid,
+                                    card_code: card.get().await.model().card.code.clone(),
                                     ..Default::default()
                                 }
                             })
@@ -341,7 +343,10 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
             .async_map(|(camp, minion)| async move {
                 MinionStatus {
                     uuid: minion.uuid().await,
-                    type_id: minion.model().await.card.rowid,
+                    card: MessageField::some(idl_gen::bss_heartstone::Card {
+                        card_code: minion.model().await.card.code.clone(),
+                        ..Default::default()
+                    }),
                     atk: minion.atk().await,
                     hp: minion.hp().await,
                     buff_list: minion
@@ -349,7 +354,6 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
                         .await
                         .iter()
                         .map(|buff| idl_gen::bss_heartstone::Buff {
-                            buff_type: buff.buff_type(),
                             atk_boost: buff.atk_boost(),
                             hp_boost: buff.hp_boost(),
                             ..Default::default()

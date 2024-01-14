@@ -3,10 +3,10 @@ use dialoguer::Input;
 use heartstone::model::{Camp, CardModel};
 use idl_gen::bss_heartstone::{
     BuffEvent, Card, DamageEvent, DrawCardEvent, MinionAttackEvent, MinionEffectEvent,
-    MinionEnterEvent, MinionRemoveEvent, MinionStatus, NewTurnEvent, PlayerEndTurnAction,
-    PlayerManaChange, PlayerOperateMinionAction, PlayerTurnAction, PlayerTurnActionEnum,
-    PlayerUseCardAction, PlayerUseCardEndEvent, PlayerUseCardEvent, Position, SwapFrontBackEvent,
-    SyncGameStatus, Target, TurnTypeEnum,
+    MinionEnterEvent, MinionRemoveEvent, NewTurnEvent, PlayerEndTurnAction, PlayerManaChange,
+    PlayerOperateMinionAction, PlayerTurnAction, PlayerTurnActionEnum, PlayerUseCardAction,
+    PlayerUseCardEndEvent, PlayerUseCardEvent, Position, SwapFrontBackEvent, SyncGameStatus,
+    Target, TurnTypeEnum,
 };
 use protobuf::{EnumOrUnknown, MessageField};
 use std::collections::HashMap;
@@ -46,7 +46,7 @@ enum Args {
 
 #[derive(Debug, Default)]
 pub struct StdInAndOut {
-    cards: HashMap<i64, Arc<CardModel>>,
+    cards: HashMap<String, Arc<CardModel>>,
 }
 
 lazy_static::lazy_static! {
@@ -95,7 +95,7 @@ pub trait Client {
 impl StdInAndOut {
     pub fn cache_cards(&mut self, cards: &[Arc<CardModel>]) {
         for card in cards {
-            self.cards.insert(card.card.rowid, card.clone());
+            self.cards.insert(card.card.code.clone(), card.clone());
         }
     }
 
@@ -202,7 +202,7 @@ impl StdInAndOut {
                 .cards
                 .into_iter()
                 .enumerate()
-                .for_each(|(index, card)| println!("    #{index} {}", self.get_card_info(card)));
+                .for_each(|(index, card)| println!("    #{index} {}", self.get_card_info(&card)));
         }
         println!("----------------------------------------");
 
@@ -215,7 +215,7 @@ impl StdInAndOut {
                     println!(
                         "  #{} {} {}/{}",
                         minion.uuid,
-                        self.get_minion_info(minion),
+                        self.get_card_info(minion.card.as_ref().unwrap()),
                         minion.atk,
                         minion.hp
                     );
@@ -249,14 +249,14 @@ impl StdInAndOut {
                 Some(card) => println!(
                     "玩家 [{}] 抽到了 {}",
                     event.player_uuid,
-                    self.get_card_info(*card)
+                    self.get_card_info(card.as_ref())
                 ),
                 None => println!("玩家 [{}] 抽了 1 张牌", event.player_uuid),
             },
             idl_gen::bss_heartstone::DrawCardResult::Fire => println!(
                 "玩家 [{}] 抽到了 {}，但因为手牌已满，这张牌爆掉了",
                 event.player_uuid,
-                self.get_card_info_by_id(event.card.unwrap().card_id)
+                self.get_card_info(event.card.as_ref().unwrap())
             ),
             idl_gen::bss_heartstone::DrawCardResult::Tired => {
                 println!(
@@ -273,7 +273,7 @@ impl StdInAndOut {
             "玩家 [{}] 消耗 {} 点法力值，使用了 [{}]",
             event.player_uuid,
             event.cost_mana,
-            self.get_card_info_by_id(event.card.unwrap().card_id)
+            self.get_card_info(event.card.as_ref().unwrap())
         )
     }
 
@@ -290,7 +290,7 @@ impl StdInAndOut {
     pub fn print_minion_enter(&self, event: MinionEnterEvent) {
         println!(
             "随从 [{}] 加入了阵营 [{}]，身材为 {}/{}，随从ID为 [{}]",
-            self.get_card_info_by_id(event.minion_type),
+            self.get_card_info(event.card.as_ref().unwrap()),
             Self::camp_desc(event.group),
             event.atk,
             event.hp,
@@ -364,23 +364,9 @@ impl StdInAndOut {
         }
     }
 
-    fn get_card_info_by_id(&self, card: i64) -> String {
+    fn get_card_info(&self, card: &Card) -> String {
         self.cards
-            .get(&card)
-            .map(|model| model.card.name.to_string())
-            .unwrap_or("<Unknown>".to_string())
-    }
-
-    fn get_card_info(&self, card: Card) -> String {
-        self.cards
-            .get(&card.card_id)
-            .map(|model| model.card.name.to_string())
-            .unwrap_or("<Unknown>".to_string())
-    }
-
-    fn get_minion_info(&self, minion: &MinionStatus) -> String {
-        self.cards
-            .get(&minion.type_id)
+            .get(&card.card_code)
             .map(|model| model.card.name.to_string())
             .unwrap_or("<Unknown>".to_string())
     }
