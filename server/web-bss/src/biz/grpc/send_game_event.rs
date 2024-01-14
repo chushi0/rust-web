@@ -38,7 +38,10 @@ pub async fn handle(req: &SendGameEventRequest) -> Result<SendGameEventResponse>
                     success_players.push(*user_id);
                 }
             }
-            None => fail_players.push(*user_id),
+            None => {
+                log::warn!("player {user_id} not establish now");
+                fail_players.push(*user_id);
+            }
         }
     }
     Ok(SendGameEventResponse {
