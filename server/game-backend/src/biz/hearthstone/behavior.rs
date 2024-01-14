@@ -7,7 +7,7 @@ use heartstone::{
     player::{Player, PlayerBehavior, PlayerTurnAction},
 };
 use idl_gen::{
-    bss_heartstone::{MyTurnStartEvent, PlayerEndTurnAction, PlayerTurnActionEnum},
+    bss_heartstone::{MyTurnEndEvent, MyTurnStartEvent, PlayerEndTurnAction, PlayerTurnActionEnum},
     bss_websocket::{GameEvent, SendGameEventRequest},
     game_backend::GameType,
 };
@@ -68,7 +68,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
             }
         };
         let on_stop_listen_input = async {
-            let payload = MyTurnStartEvent::default();
+            let payload = MyTurnEndEvent::default();
             let payload = match payload.write_to_bytes() {
                 Ok(v) => v,
                 Err(err) => {
@@ -82,7 +82,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
                 game_type: GameType::Hearthstone as i32,
                 room_id,
                 event_list: vec![GameEvent {
-                    event_type: MyTurnStartEvent::NAME.into(),
+                    event_type: MyTurnEndEvent::NAME.into(),
                     payload: payload.into(),
                 }],
             };
