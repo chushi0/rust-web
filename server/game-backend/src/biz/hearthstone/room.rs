@@ -2,14 +2,15 @@ use crate::common::{
     input::InputManager,
     room::{BizRoom, SafeRoom},
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use heartstone::{
     game::{Config, Game, PlayerConfig},
     model::{CardModel, CardPool},
 };
-use idl_gen::bss_websocket_client::BoxProtobufPayload;
-use std::sync::Arc;
+use idl_gen::{bss_heartstone::JoinRoomExtraData, bss_websocket_client::BoxProtobufPayload};
+use protobuf::Message;
+use std::{collections::HashMap, sync::Arc};
 
 #[derive(Debug)]
 pub struct Room {
@@ -61,27 +62,56 @@ impl BizRoom for Room {
 
 impl Room {
     async fn create_game(&self, safe_room: SafeRoom) -> Result<Game> {
-        let config = Config {
-            card_pool: Self::get_all_card().await?,
-            game_notifier: Arc::new(super::notifier::Notifier::new(safe_room.clone())),
-            ..Default::default()
-        };
+        let card_pool = Self::get_all_card().await?;
+        let card_name_map: HashMap<_, _> = card_pool
+            .iter()
+            .map(|(_, model)| (model.card.code.clone(), model.clone()))
+            .collect();
 
         let room = safe_room.lock().await;
         let players = room.players();
         let players = players
             .iter()
-            .map(|player| PlayerConfig {
-                custom_id: player.get_user_id(),
-                behavior: Arc::new(super::behavior::SocketPlayerBehavior::new(
-                    player.get_user_id(),
-                    safe_room.clone(),
-                    self.input.clone(),
-                )),
-                ..Default::default()
-            })
-            .collect();
+            .map(|player| {
+                let extra_data = player
+                    .get_extra_data()
+                    .as_ref()
+                    .map(|data| JoinRoomExtraData::parse_from_bytes(data))
+                    .ok_or(anyhow!("no extra data"))??;
 
+                let mut deck = HashMap::new();
+                for id in extra_data
+                    .card_code
+                    .into_iter()
+                    .map(|card_name| {
+                        card_name_map
+                            .get(&card_name)
+                            .map(|model| model.card.rowid)
+                            .ok_or_else(|| anyhow!("unknown card {card_name}"))
+                    })
+                    .collect::<Result<Vec<_>>>()?
+                {
+                    *deck.entry(id).or_default() += 1;
+                }
+
+                Ok(PlayerConfig {
+                    custom_id: player.get_user_id(),
+                    behavior: Arc::new(super::behavior::SocketPlayerBehavior::new(
+                        player.get_user_id(),
+                        safe_room.clone(),
+                        self.input.clone(),
+                    )),
+                    deck,
+                    ..Default::default()
+                })
+            })
+            .collect::<Result<Vec<_>>>()?;
+
+        let config = Config {
+            card_pool,
+            game_notifier: Arc::new(super::notifier::Notifier::new(safe_room.clone())),
+            ..Default::default()
+        };
         let game = Game::new(config, players).await;
         Ok(game)
     }
