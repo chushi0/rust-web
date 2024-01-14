@@ -1348,18 +1348,22 @@ dependencies = [
 name = "heartstone-cli"
 version = "0.1.0"
 dependencies = [
+ "anyhow",
  "async-trait",
  "clap",
  "datastructure",
  "dialoguer",
+ "futures-util",
  "heartstone",
  "idl-gen",
  "lazy_static",
  "protobuf",
+ "reqwest",
  "serde",
  "serde_json",
  "tokio",
  "web-db",
+ "websocket-lite",
 ]
 
 [[package]]
@@ -1408,7 +1412,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6b05da5b9e5d4720bfb691eebb2b9d42da3570745da71eac8a1f5bb7e59aab88"
 dependencies = [
  "hmac",
- "sha1",
+ "sha1 0.10.6",
 ]
 
 [[package]]
@@ -3243,6 +3247,15 @@ dependencies = [
 
 [[package]]
 name = "sha1"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c1da05c97445caa12d05e848c4a4fcbbea29e748ac28f7e80e9b010392063770"
+dependencies = [
+ "sha1_smol",
+]
+
+[[package]]
+name = "sha1"
 version = "0.10.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e3bf829a2d51ab4a5ddf1352d8470c140cadc8301b2ae1789db023f01cedd6ba"
@@ -3770,7 +3783,7 @@ checksum = "f8e43134db17199f7f721803383ac5854edd0d3d523cc34dba321d6acfbe76c3"
 dependencies = [
  "digest",
  "hmac",
- "sha1",
+ "sha1 0.10.6",
  "sha2",
 ]
 
@@ -4355,6 +4368,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b6c71e40d7d2c34a5106301fb632274ca37242cd0c9d3e64dbece371a40a2d87"
 dependencies = [
  "webpki",
+]
+
+[[package]]
+name = "websocket-codec"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2108c9c18a6e746addc085c18cedb66b672e8ffea6a993712decc295b0d8ae55"
+dependencies = [
+ "base64 0.13.1",
+ "byteorder",
+ "bytes",
+ "httparse",
+ "rand 0.8.5",
+ "sha1 0.6.1",
+ "tokio-util",
+]
+
+[[package]]
+name = "websocket-lite"
+version = "0.5.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d6cae39139c6e837afebd915935e7adc8af5c28425935de606d0e8c9d3268f6"
+dependencies = [
+ "base64 0.13.1",
+ "bytes",
+ "futures",
+ "native-tls",
+ "rand 0.8.5",
+ "tokio",
+ "tokio-native-tls",
+ "tokio-util",
+ "url",
+ "websocket-codec",
 ]
 
 [[package]]

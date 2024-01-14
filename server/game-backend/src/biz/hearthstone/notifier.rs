@@ -4,14 +4,17 @@ use datastructure::AsyncIter;
 use heartstone::{
     api::{GameNotifier, PlayerDrawCard, TurnAction},
     game::Game,
-    model::{Buff, Camp, Card, Fightline, HeroTrait, Minion, Target},
+    model::{
+        Buff, Buffable, Camp, Card, Damageable, Fightline, HeroTrait, Minion, MinionTrait, Target,
+    },
     player::PlayerTrait,
 };
 use idl_gen::{
+    bss_heartstone::{MinionStatus, PlayerStatus, Position, SyncGameStatus},
     bss_websocket::{GameEvent, SendGameEventRequest},
     game_backend::GameType,
 };
-use protobuf::{Message, MessageField};
+use protobuf::{EnumOrUnknown, Message, MessageField};
 use tokio::sync::{
     mpsc::{UnboundedReceiver, UnboundedSender},
     Mutex,
@@ -72,10 +75,15 @@ impl NotifierInternal {
                     .collect::<Result<Vec<GameEvent>>>();
 
                 async move {
-                    let Ok(events) = events else {
+                    let Ok(mut events) = events else {
                         log::error!("pack game event fail");
                         return;
                     };
+                    let Ok(sync_game_status) = pack_sync_game_status(game, uuid).await else {
+                        log::error!("pack sync game status fail");
+                        return;
+                    };
+                    events.push(sync_game_status);
 
                     let req = SendGameEventRequest {
                         user_id: vec![id],
@@ -279,6 +287,82 @@ impl NotifyEvent {
             }),
         }
     }
+}
+
+async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
+    pack_game_event(SyncGameStatus {
+        player_status: game
+            .players()
+            .iter()
+            .async_map(|player| async move {
+                PlayerStatus {
+                    uuid: player.uuid().await,
+                    room_index: player.get_custom_id().await,
+                    card_count: player.hand_cards().await.len() as i32,
+                    cards: if player.uuid().await == uuid {
+                        player
+                            .hand_cards()
+                            .await
+                            .into_iter()
+                            .async_map(|card| async move {
+                                idl_gen::bss_heartstone::Card {
+                                    card_id: card.get().await.model().card.rowid,
+                                    ..Default::default()
+                                }
+                            })
+                            .await
+                            .collect()
+                    } else {
+                        vec![]
+                    },
+                    hp: player.get_hero().await.hp().await,
+                    mana: player.mana().await,
+                    position: EnumOrUnknown::new(match player.get_hero().await.fightline().await {
+                        Fightline::Front => Position::Front,
+                        Fightline::Back => Position::Back,
+                    }),
+                    camp: player.camp().await as i32,
+                    ..Default::default()
+                }
+            })
+            .await
+            .collect(),
+        minion_status: game
+            .battlefield_minions(Camp::A)
+            .await
+            .iter()
+            .map(|minion| (Camp::A, minion))
+            .chain(
+                game.battlefield_minions(Camp::B)
+                    .await
+                    .iter()
+                    .map(|minion| (Camp::B, minion)),
+            )
+            .async_map(|(camp, minion)| async move {
+                MinionStatus {
+                    uuid: minion.uuid().await,
+                    type_id: minion.model().await.card.rowid,
+                    atk: minion.atk().await,
+                    hp: minion.hp().await,
+                    buff_list: minion
+                        .buff_list()
+                        .await
+                        .iter()
+                        .map(|buff| idl_gen::bss_heartstone::Buff {
+                            buff_type: buff.buff_type(),
+                            atk_boost: buff.atk_boost(),
+                            hp_boost: buff.hp_boost(),
+                            ..Default::default()
+                        })
+                        .collect(),
+                    camp: camp as i32,
+                    ..Default::default()
+                }
+            })
+            .await
+            .collect(),
+        ..Default::default()
+    })
 }
 
 fn pack_game_event<Event: Message>(event: Event) -> Result<GameEvent> {
