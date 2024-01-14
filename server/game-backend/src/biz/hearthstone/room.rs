@@ -72,6 +72,7 @@ impl Room {
         let players = players
             .iter()
             .map(|player| PlayerConfig {
+                custom_id: player.get_user_id(),
                 behavior: Arc::new(super::behavior::SocketPlayerBehavior::new(
                     player.get_user_id(),
                     safe_room.clone(),
