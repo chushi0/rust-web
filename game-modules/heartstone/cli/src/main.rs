@@ -12,16 +12,25 @@ use protobuf::{EnumOrUnknown, MessageField};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "offline")]
 mod offline;
+#[cfg(feature = "online")]
 mod online;
+
+#[cfg(not(any(feature = "offline", feature = "online")))]
+compile_error!(
+    "heartstone-cli should built with offline feature or online feature (at least one feature on!)"
+);
 
 #[derive(Debug, Parser)]
 enum Args {
     /// 本地离线运行，使用本地数据库，无AI，可以看到所有信息
+    #[cfg(feature = "offline")]
     Offline,
     /// 联机运行，使用服务端数据库，需要账号，模拟真实玩家对战环境
     ///
     /// 默认连接本地客户端，需要在本地搭建游戏服务器
+    #[cfg(feature = "online")]
     Online {
         /// Websocket服务端地址
         #[arg(short, long, default_value = "ws://127.0.0.1:3000")]
@@ -58,7 +67,9 @@ async fn main() {
     let args = Args::parse();
 
     let client: Box<dyn Client> = match args {
+        #[cfg(feature = "offline")]
         Args::Offline => Box::new(offline::Client),
+        #[cfg(feature = "online")]
         Args::Online {
             ws_server_ip,
             http_server_ip,

@@ -5,6 +5,11 @@ version = "0.1.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+default = ["offline", "online"]
+offline = []
+online = []
+
 [dependencies]
 datastructure = {path = "../../../lib/datastructure"}
 idl-gen = {path = "../../../lib/idl-gen"}
