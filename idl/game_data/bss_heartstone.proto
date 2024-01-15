@@ -48,8 +48,8 @@ message MyTurnStartEvent {}
 message MyTurnEndEvent {}
 
 enum TurnTypeEnum {
-  PlayerTurn = 1;
-  SwapTurn = 2;
+  PlayerTurn = 0;
+  SwapTurn = 1;
 }
 
 // 新的回合
@@ -143,9 +143,9 @@ message DamageEvent {
 
 // 抽牌
 enum DrawCardResult {
-  Ok = 1;
-  Fire = 2;
-  Tired = 3;
+  Ok = 0;
+  Fire = 1;
+  Tired = 2;
 }
 
 message DrawCardEvent {
@@ -157,9 +157,9 @@ message DrawCardEvent {
 
 // 随从效果
 enum MinionEffect {
-  Other = 1;
-  Battlecry = 2;
-  Deathrattle = 3;
+  Other = 0;
+  Battlecry = 1;
+  Deathrattle = 2;
 }
 
 message MinionEffectEvent {
