@@ -7,4 +7,5 @@ version = "0.1.0"
 
 [dependencies]
 datastructure_macro_derive = {path = "datastructure_macro_derive"}
+futures-core = "0.3.30"
 tokio = {version = "1.35.0", features = ["full"]}

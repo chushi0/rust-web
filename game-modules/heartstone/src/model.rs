@@ -108,6 +108,8 @@ pub trait HeroTrait {
 
     async fn swap_fightline(&mut self);
 
+    async fn change_fightline_to(&mut self, fightline: Fightline);
+
     async fn uuid(&self) -> u64;
 }
 
@@ -120,6 +122,11 @@ impl HeroTrait for SyncHandle<Hero> {
     async fn swap_fightline(&mut self) {
         let mut hero = self.get_mut().await;
         hero.fightline = hero.fightline.opposite();
+    }
+
+    async fn change_fightline_to(&mut self, fightline: Fightline) {
+        let mut hero = self.get_mut().await;
+        hero.fightline = fightline;
     }
 
     async fn uuid(&self) -> u64 {
@@ -372,6 +379,7 @@ pub struct Deck {
 #[async_trait::async_trait]
 pub trait DeckTrait {
     async fn draw(&mut self) -> Option<SyncHandle<Card>>;
+    async fn put<Rng: rand::Rng + Send>(&mut self, card: SyncHandle<Card>, rng: &mut Rng);
 }
 
 #[async_trait::async_trait]
@@ -383,6 +391,12 @@ impl DeckTrait for SyncHandle<Deck> {
         } else {
             Some(cards.remove(0))
         }
+    }
+
+    async fn put<Rng: rand::Rng + Send>(&mut self, card: SyncHandle<Card>, rng: &mut Rng) {
+        let cards = &mut self.get_mut().await.cards;
+        let insert_index = rng.gen_range(0..=cards.len());
+        cards.insert(insert_index, card);
     }
 }
 
@@ -420,6 +434,8 @@ pub trait HandTrait {
 
     async fn gain_card(&mut self, card: SyncHandle<Card>) -> bool;
 
+    async fn replace_card(&mut self, index: usize, card: SyncHandle<Card>) -> SyncHandle<Card>;
+
     async fn cards(&self) -> Vec<SyncHandle<Card>>;
 }
 
@@ -442,6 +458,13 @@ impl HandTrait for SyncHandle<Hand> {
         } else {
             false
         }
+    }
+
+    async fn replace_card(&mut self, index: usize, card: SyncHandle<Card>) -> SyncHandle<Card> {
+        let mut hand = self.get_mut().await;
+        let old_card = hand.cards[index].clone();
+        hand.cards[index] = card;
+        old_card
     }
 
     async fn cards(&self) -> Vec<SyncHandle<Card>> {

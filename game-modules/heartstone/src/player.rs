@@ -4,16 +4,24 @@ use crate::{
         Camp, Card, CardPool, Deck, DeckTrait, Fightline, Hand, HandTrait, Hero, HeroTrait, Target,
     },
 };
-use datastructure::{SyncChannel, SyncHandle};
-use std::{
-    fmt::Debug,
-    sync::{mpsc::SendError, Arc},
-};
+use datastructure::SyncHandle;
+use std::{fmt::Debug, sync::Arc};
 
 #[async_trait::async_trait]
 pub trait PlayerBehavior: Debug + Send + Sync {
+    /// 初始化玩家时授予的uuid，只会调用一次
     async fn assign_uuid(&self, uuid: u64);
 
+    /// 准备阶段的行动
+    ///
+    /// 此阶段有全局时间限制，在时间达到限制时会立刻中断。如果函数依赖资源清理，需要实现Drop trait（或其他清理方式）。
+    /// 当客户端明确表示不会再有下一步行动时可以返回None，将不再等待
+    async fn next_starting_action(&self, player: &Player) -> Option<PlayerStartingAction>;
+    /// 结束准备阶段
+    /// 可用于清理next_starting_action被取消后，需要清理的资源
+    async fn finish_starting_action(&self, player: &Player);
+
+    /// 玩家回合行动
     async fn next_action(&self, game: &Game, player: &Player) -> PlayerTurnAction;
 }
 
@@ -30,6 +38,14 @@ pub struct Player {
     mana: i32,
     max_mana: u16,
     tired: u32,
+}
+
+/// 玩家开始
+pub enum PlayerStartingAction {
+    SwapStartingCards { cards_index: Vec<usize> },
+    ChooseFightline { fightline: Option<Fightline> },
+    LockFightline,
+    UnlockFightline,
 }
 
 /// 玩家回合基本行动
@@ -54,6 +70,10 @@ pub enum DrawCardResult {
 
 #[async_trait::async_trait]
 pub trait PlayerTrait {
+    async fn next_starting_action(&self) -> Option<PlayerStartingAction>;
+
+    async fn finish_starting_action(&self);
+
     async fn next_action(&self, game: &Game) -> PlayerTurnAction;
 
     async fn get_hero(&self) -> SyncHandle<Hero>;
@@ -70,6 +90,14 @@ pub trait PlayerTrait {
 
     async fn draw_card(&mut self) -> DrawCardResult;
 
+    async fn draw_starting_card(&mut self);
+
+    async fn swap_starting_card<Rng: rand::Rng + Send>(&mut self, index: &[usize], rng: &mut Rng);
+
+    async fn change_fightline_to(&mut self, fightline: Fightline) {
+        self.get_hero().await.change_fightline_to(fightline).await
+    }
+
     async fn hand_cards(&self) -> Vec<SyncHandle<Card>>;
 
     async fn uuid(&self) -> u64 {
@@ -81,6 +109,16 @@ pub trait PlayerTrait {
 
 #[async_trait::async_trait]
 impl PlayerTrait for SyncHandle<Player> {
+    async fn next_starting_action(&self) -> Option<PlayerStartingAction> {
+        let player = self.get().await;
+        player.behavior.next_starting_action(&player).await
+    }
+
+    async fn finish_starting_action(&self) {
+        let player = self.get().await;
+        player.behavior.finish_starting_action(&player).await;
+    }
+
     async fn next_action(&self, game: &Game) -> PlayerTurnAction {
         // 从behavior中读取action信息，并判定输入是否合法
         let player = self.get().await;
@@ -160,6 +198,37 @@ impl PlayerTrait for SyncHandle<Player> {
         }
     }
 
+    async fn draw_starting_card(&mut self) {
+        let mut player = self.get_mut().await;
+
+        for _ in 0..4 {
+            match player.deck.draw().await {
+                Some(card) => {
+                    let draw_result = player.hand.gain_card(card).await;
+                    assert!(draw_result, "draw starting card should not be fail");
+                }
+                // 牌库连四张牌都没有吗？太惨了。。。
+                None => break,
+            }
+        }
+    }
+
+    async fn swap_starting_card<Rng: rand::Rng + Send>(&mut self, index: &[usize], rng: &mut Rng) {
+        let mut player = self.get_mut().await;
+        for index in index {
+            if *index >= 4 {
+                continue;
+            }
+            match player.deck.draw().await {
+                Some(card) => {
+                    let card = player.hand.replace_card(*index, card).await;
+                    player.deck.put(card, rng).await;
+                }
+                None => break,
+            };
+        }
+    }
+
     async fn hand_cards(&self) -> Vec<SyncHandle<Card>> {
         self.get().await.hand.cards().await
     }
@@ -206,59 +275,20 @@ impl Player {
     }
 }
 
-pub struct SocketPlayerBehavior {
-    turn_action_channel: SyncChannel<PlayerTurnAction>,
-}
-
 #[derive(Debug, Default)]
 pub struct AIPlayerBehavior {}
-
-impl SocketPlayerBehavior {
-    pub fn new() -> SocketPlayerBehavior {
-        SocketPlayerBehavior {
-            turn_action_channel: SyncChannel::new(),
-        }
-    }
-
-    pub async fn player_input_turn_action(
-        &self,
-        turn_action: PlayerTurnAction,
-    ) -> Result<(), SendError<PlayerTurnAction>> {
-        self.turn_action_channel.send(turn_action).await
-    }
-}
-
-impl Default for SocketPlayerBehavior {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[async_trait::async_trait]
-impl PlayerBehavior for SocketPlayerBehavior {
-    async fn assign_uuid(&self, _uuid: u64) {}
-
-    async fn next_action(&self, _game: &Game, _player: &Player) -> PlayerTurnAction {
-        self.turn_action_channel.increase_version().await;
-        self.turn_action_channel
-            .recv()
-            // .recv_with_timeout(Duration::from_secs(60))
-            .await
-            .unwrap_or(PlayerTurnAction::EndTurn)
-    }
-}
 
 #[async_trait::async_trait]
 impl PlayerBehavior for AIPlayerBehavior {
     async fn assign_uuid(&self, _uuid: u64) {}
 
+    async fn next_starting_action(&self, _player: &Player) -> Option<PlayerStartingAction> {
+        None
+    }
+
+    async fn finish_starting_action(&self, _player: &Player) {}
+
     async fn next_action(&self, _game: &Game, _player: &Player) -> PlayerTurnAction {
         PlayerTurnAction::EndTurn
-    }
-}
-
-impl Debug for SocketPlayerBehavior {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SocketPlayerBehavior").finish()
     }
 }

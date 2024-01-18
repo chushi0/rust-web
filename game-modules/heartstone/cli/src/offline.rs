@@ -1,12 +1,12 @@
 use datastructure::AsyncIter;
 use heartstone::{
-    api::{GameNotifier, PlayerDrawCard, TurnAction},
+    api::{GameNotifier, GameRunningNotifier, GameStartingNotifier, PlayerDrawCard, TurnAction},
     game::{Config, Game, PlayerConfig},
     model::{
         Buff, Buffable, Camp, Card, CardModel, Damageable, Fightline, HeroTrait, Minion,
         MinionTrait, Target,
     },
-    player::{Player, PlayerBehavior, PlayerTrait, PlayerTurnAction},
+    player::{Player, PlayerBehavior, PlayerStartingAction, PlayerTrait, PlayerTurnAction},
 };
 use idl_gen::bss_heartstone::{
     BuffEvent, DamageEvent, DrawCardEvent, DrawCardResult, MinionAttackEvent, MinionEffect,
@@ -82,7 +82,41 @@ async fn load_card_pool() -> HashMap<i64, Arc<CardModel>> {
 
 #[async_trait::async_trait]
 #[allow(unused_variables)]
-impl GameNotifier for StdNotifier {
+impl GameStartingNotifier for StdNotifier {
+    async fn flush_at_starting(&self) {}
+
+    fn camp_decide(&self, player: u64, camp: Camp) {
+        println!("camp decide: player={player}, camp={camp:?}")
+    }
+
+    fn starting_card(&self, player: u64, cards: Vec<Card>) {
+        println!("starting_card: player={player}, cards={cards:?}")
+    }
+
+    fn change_starting_card(&self, player: u64, change_card_index: &[usize], new_cards: Vec<Card>) {
+        println!("change_starting_card: player={player}, change_card_index={change_card_index:?}, new_cards={new_cards:?}")
+    }
+
+    fn fightline_choose(&self, player: u64, fightline: Option<Fightline>) {
+        println!("fightline_choose: player={player}, fightline={fightline:?}")
+    }
+
+    fn fightline_lock(&self, player: u64, fightline: Fightline) {
+        println!("fightline lock: player={player}, fightline={fightline:?}")
+    }
+
+    fn fightline_unlock(&self, player: u64) {
+        println!("fightline unlock: player={player}")
+    }
+
+    fn fightline_decide(&self, player: u64, fightline: Fightline) {
+        println!("fightline decide: player={player}, fightline={fightline:?}")
+    }
+}
+
+#[async_trait::async_trait]
+#[allow(unused_variables)]
+impl GameRunningNotifier for StdNotifier {
     async fn flush(&self, game: &Game) {
         let game_status = SyncGameStatus {
             player_status: game
@@ -338,9 +372,17 @@ impl GameNotifier for StdNotifier {
     }
 }
 
+impl GameNotifier for StdNotifier {}
+
 #[async_trait::async_trait]
 impl PlayerBehavior for StdBehavior {
     async fn assign_uuid(&self, _uuid: u64) {}
+
+    async fn next_starting_action(&self, _player: &Player) -> Option<PlayerStartingAction> {
+        None
+    }
+
+    async fn finish_starting_action(&self, _player: &Player) {}
 
     async fn next_action(&self, _game: &Game, _player: &Player) -> PlayerTurnAction {
         let action = crate::io().next_action();

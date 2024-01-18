@@ -6,11 +6,14 @@ mod enums;
 mod handle;
 /// 包含迭代器相关的结构体
 mod iter;
+/// 包含stream相关结构体
+mod stream;
 
 pub use array::*;
 pub use enums::*;
 pub use handle::*;
 pub use iter::*;
+pub use stream::*;
 
 pub mod macros {
     pub use datastructure_macro_derive::TwoValue;

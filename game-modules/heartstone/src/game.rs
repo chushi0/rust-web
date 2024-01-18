@@ -5,9 +5,10 @@ use crate::{
         Battlefield, BattlefieldTrait, Buff, Buffable, Camp, Card, CardModel, CardPool, Damageable,
         Fightline, HeroTrait, Minion, MinionTrait, Target, UuidGenerator,
     },
-    player::{AIPlayerBehavior, Player, PlayerBehavior, PlayerTrait},
+    player::{AIPlayerBehavior, Player, PlayerBehavior, PlayerStartingAction, PlayerTrait},
 };
-use datastructure::{CycleArrayVector, SyncHandle};
+use datastructure::{AsyncIter, Concurrency, CycleArrayVector, SyncHandle, TwoValueEnum};
+use futures_util::stream::StreamExt;
 use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 use std::{collections::HashMap, sync::Arc};
 use web_db::hearthstone::CardType;
@@ -86,13 +87,18 @@ impl Game {
         let card_pool = config.card_pool;
         let mut uuid_increase = UuidGenerator::new();
 
-        let players = {
+        let players: Vec<_> = {
+            // 先为这些玩家分配uuid
+            let players = players
+                .into_iter()
+                .map(|player| (uuid_increase.gen(), player));
+
             // 分队
             let mut camp_a = Vec::new();
             let mut camp_b = Vec::new();
             let mut camp_undefined = Vec::new();
             for player in players {
-                match player.camp {
+                match player.1.camp {
                     Some(Camp::A) => camp_a.push(player),
                     Some(Camp::B) => camp_b.push(player),
                     None => camp_undefined.push(player),
@@ -111,51 +117,37 @@ impl Game {
             while camp_b.len() < 2 {
                 camp_b.push(camp_undefined.remove(0));
             }
+            assert!(camp_undefined.is_empty(), "all player should has camp");
 
-            // 初始前后排确定
-            camp_a.shuffle(&mut rng);
-            camp_b.shuffle(&mut rng);
+            let player_with_camp: Vec<_> = camp_a
+                .into_iter()
+                .map(|(player_uuid, config)| (player_uuid, config, Camp::A))
+                .chain(
+                    camp_b
+                        .into_iter()
+                        .map(|(player_uuid, config)| (player_uuid, config, Camp::B)),
+                )
+                .collect();
+
+            // 通知
+            for (player_uuid, _, camp) in &player_with_camp {
+                game_notifier.camp_decide(*player_uuid, *camp)
+            }
 
             // 生成玩家对象
-            // 注意：此处按照玩家行动顺序生成对象，以便后面生成行动顺序时直接使用
-            vec![
-                Player::new(
-                    uuid_increase.gen(),
-                    &card_pool,
-                    camp_a.remove(0),
-                    Camp::A,
-                    Fightline::Back,
-                    &mut rng,
-                )
-                .await,
-                Player::new(
-                    uuid_increase.gen(),
-                    &card_pool,
-                    camp_b.remove(0),
-                    Camp::B,
-                    Fightline::Back,
-                    &mut rng,
-                )
-                .await,
-                Player::new(
-                    uuid_increase.gen(),
-                    &card_pool,
-                    camp_a.remove(0),
-                    Camp::A,
-                    Fightline::Front,
-                    &mut rng,
-                )
-                .await,
-                Player::new(
-                    uuid_increase.gen(),
-                    &card_pool,
-                    camp_b.remove(0),
-                    Camp::B,
-                    Fightline::Front,
-                    &mut rng,
-                )
-                .await,
-            ]
+            // 我们需要在此处先生成玩家对象，以便管理手牌、牌库资源
+            // 对于前后排，由于尚未确定，暂时将其置为 前排，会在稍后将其修改为正确的值
+            let mut players = Vec::with_capacity(4);
+            for (uuid, config, camp) in player_with_camp {
+                players.push(
+                    Player::new(uuid, &card_pool, config, camp, Fightline::Front, &mut rng).await,
+                );
+            }
+
+            // 准备阶段玩家初始化
+            Self::player_starting_init(game_notifier.clone(), &mut players, &mut rng).await;
+
+            players
         };
 
         let battlefield = [(Camp::A, Battlefield::new()), (Camp::B, Battlefield::new())]
@@ -180,6 +172,293 @@ impl Game {
             turn,
             turn_actions,
             interpreter_depth: 0,
+        }
+    }
+
+    async fn player_starting_init<Rng: rand::Rng + Send>(
+        game_notifier: Arc<dyn GameNotifier>,
+        players: &mut [SyncHandle<Player>],
+        rng: &mut Rng,
+    ) {
+        // 抽取起始卡牌
+        for player in &mut *players {
+            player.draw_starting_card().await;
+            let cards = player.hand_cards().await;
+            let mut card_refs = Vec::new();
+            for card in &cards {
+                card_refs.push(card.get().await.clone());
+            }
+            game_notifier.starting_card(player.uuid().await, card_refs);
+        }
+
+        // 通知
+        game_notifier.flush_at_starting().await;
+
+        // 前后排决定 & 更换手牌
+        {
+            struct StartingPlayer {
+                index: usize,
+                camp: Camp,
+                replace_cards: Option<Vec<usize>>,
+                position: Position,
+            }
+            #[derive(Debug, Clone, Copy)]
+            enum Position {
+                None,
+                Perfer(Fightline),
+                Lock(Fightline),
+            }
+            enum FutureResult {
+                TIMEOUT,
+                PlayerStartingAction {
+                    index: usize,
+                    action: Option<PlayerStartingAction>,
+                },
+            }
+
+            let mut starting_players: HashMap<_, _> = (0..4)
+                .into_iter()
+                .map(|index| {
+                    (
+                        index,
+                        players.get(index).expect("player should exist").clone(),
+                    )
+                })
+                .async_map(|(index, player)| async move {
+                    (
+                        player.uuid().await,
+                        StartingPlayer {
+                            index,
+                            camp: player.camp().await,
+                            replace_cards: None,
+                            position: Position::None,
+                        },
+                    )
+                })
+                .await
+                .collect();
+
+            // 超时时间设定
+            let prepare_timeout = async {
+                tokio::time::sleep(std::time::Duration::from_secs(60)).await;
+                FutureResult::TIMEOUT
+            };
+            // 玩家输入
+            let player_action_spawner = |index: usize| {
+                let player = players
+                    .get(index)
+                    .expect("starting action should have player")
+                    .clone();
+                async move {
+                    let action = player.next_starting_action().await;
+                    FutureResult::PlayerStartingAction { index, action }
+                }
+            };
+
+            let mut concurrency = Concurrency::new();
+            concurrency.submit_task(prepare_timeout);
+            for index in 0..4 {
+                concurrency.submit_task(player_action_spawner(index));
+            }
+
+            // 轮询检查输入
+            while let Some(result) = concurrency.next().await {
+                match result {
+                    FutureResult::TIMEOUT => break,
+                    FutureResult::PlayerStartingAction {
+                        index: _,
+                        action: None, // 明确表示不会有后续输入
+                    } => {
+                        // 只剩下超时任务了，那就不用轮询了
+                        if concurrency.remain_task() == 1 {
+                            break;
+                        }
+                    }
+                    FutureResult::PlayerStartingAction {
+                        index,
+                        action: Some(action),
+                    } => {
+                        let mut player = players
+                            .get(index)
+                            .expect("starting player should exist")
+                            .clone();
+                        let uuid = player.uuid().await;
+                        let starting_player = starting_players
+                            .get_mut(&uuid)
+                            .expect("uuid player should exist");
+                        match action {
+                            PlayerStartingAction::SwapStartingCards { cards_index } => {
+                                if !starting_player.replace_cards.is_some() {
+                                    player.swap_starting_card(&cards_index, rng).await;
+                                    let cards = player.hand_cards().await;
+                                    let mut card_refs = Vec::new();
+                                    for card in &cards {
+                                        card_refs.push(card.get().await.clone());
+                                    }
+                                    game_notifier.change_starting_card(
+                                        player.uuid().await,
+                                        &cards_index,
+                                        card_refs,
+                                    );
+                                    starting_player.replace_cards = Some(cards_index);
+                                }
+                            }
+                            PlayerStartingAction::ChooseFightline { fightline } => {
+                                if !matches!(starting_player.position, Position::Lock(_)) {
+                                    starting_player.position = match fightline {
+                                        Some(fightline) => Position::Perfer(fightline),
+                                        None => Position::None,
+                                    };
+                                    game_notifier.fightline_choose(uuid, fightline);
+                                }
+                            }
+                            PlayerStartingAction::LockFightline => {
+                                // 同队其他玩家不能锁定
+                                // 为了满足借用检查器，我们先拿到我们需要的参数，丢弃starting_player。在完成检查后，再重新获取starting_player
+                                let camp = starting_player.camp;
+                                if !starting_players.iter().any(|(uuid, player)| {
+                                    uuid != uuid
+                                        && player.camp == camp
+                                        && matches!(player.position, Position::Lock(_))
+                                }) {
+                                    let starting_player = starting_players.get_mut(&uuid).expect(
+                                        "get player should success because we just used it before",
+                                    );
+                                    if let Position::Perfer(fightline) = starting_player.position {
+                                        starting_player.position = Position::Lock(fightline);
+                                        game_notifier.fightline_lock(uuid, fightline);
+                                    }
+                                }
+                            }
+                            PlayerStartingAction::UnlockFightline => {
+                                if let Position::Lock(fightline) = starting_player.position {
+                                    starting_player.position = Position::Perfer(fightline);
+                                    game_notifier.fightline_unlock(uuid);
+                                }
+                            }
+                        };
+                        game_notifier.flush_at_starting().await;
+                        // 玩家可能仍然有输入操作，将任务重新置入stream中，等待玩家输入
+                        concurrency.submit_task(player_action_spawner(index));
+                    }
+                }
+            }
+
+            // 清理
+            for player in &mut *players {
+                player.finish_starting_action().await;
+            }
+
+            // 该决定位置了
+            // 同一队中，优先级: Lock > Perfer > None
+            // 如果都处于Perfer，则随机挑选一个
+            // 如果都处于None，则随机分配
+            for camp in [Camp::A, Camp::B] {
+                let mut starting_players = starting_players
+                    .iter()
+                    .filter(|(_, player)| player.camp == camp);
+                let (_, player1) = starting_players.next().expect("player should exist");
+                let (_, player2) = starting_players.next().expect("player should exist");
+                assert!(
+                    starting_players.next().is_none(),
+                    "only two players should in one camp"
+                );
+
+                match (
+                    (player1.index, player1.position),
+                    (player2.index, player2.position),
+                ) {
+                    // double lock
+                    ((_, Position::Lock(_)), (_, Position::Lock(_))) => {
+                        unreachable!("double lock has been filtered when input");
+                    }
+
+                    // lock
+                    ((id1, Position::Lock(f)), (id2, _)) | ((id2, _), (id1, Position::Lock(f))) => {
+                        players[id1].change_fightline_to(f).await;
+                        players[id2].change_fightline_to(f.opposite()).await;
+                    }
+
+                    // double perfer
+                    ((id1, Position::Perfer(f1)), (id2, Position::Perfer(f2))) => {
+                        let random_choice = if rng.gen_bool(0.5) {
+                            [(id1, f1), (id2, f1.opposite())]
+                        } else {
+                            [(id2, f2), (id1, f2.opposite())]
+                        };
+
+                        for (id, f) in random_choice {
+                            players[id].change_fightline_to(f).await;
+                        }
+                    }
+
+                    // perfer
+                    ((id1, Position::Perfer(f)), (id2, _))
+                    | ((id2, _), (id1, Position::Perfer(f))) => {
+                        players[id1].change_fightline_to(f).await;
+                        players[id2].change_fightline_to(f.opposite()).await;
+                    }
+
+                    // double none
+                    ((id1, Position::None), (id2, Position::None)) => {
+                        let f = if rng.gen_bool(0.5) {
+                            Fightline::Front
+                        } else {
+                            Fightline::Back
+                        };
+
+                        players[id1].change_fightline_to(f).await;
+                        players[id2].change_fightline_to(f.opposite()).await;
+                    }
+                }
+            }
+
+            // 位置信息发送给客户端
+            for player in &*players {
+                game_notifier.fightline_decide(
+                    player.uuid().await,
+                    player.get_hero().await.fightline().await,
+                );
+            }
+            game_notifier.flush_at_starting().await;
+        }
+
+        // 按照行动顺序排序
+        let mut sort_keys: Vec<_> = players
+            .iter()
+            .enumerate()
+            .async_map(|(index, player)| async move {
+                (
+                    index,
+                    player.camp().await,
+                    player.get_hero().await.fightline().await,
+                )
+            })
+            .await
+            .collect();
+
+        sort_keys.sort_by(|(_, c1, f1), (_, c2, f2)| {
+            match (f1, f2) {
+                (Fightline::Front, Fightline::Back) => return std::cmp::Ordering::Greater,
+                (Fightline::Back, Fightline::Front) => return std::cmp::Ordering::Less,
+                _ => (),
+            };
+            match (c1, c2) {
+                (Camp::A, Camp::B) => return std::cmp::Ordering::Less,
+                (Camp::B, Camp::A) => return std::cmp::Ordering::Greater,
+                _ => (),
+            };
+
+            unreachable!()
+        });
+
+        let sort_keys: Vec<_> = sort_keys.into_iter().map(|(index, _, _)| index).collect();
+        let mut new_players = Vec::with_capacity(4);
+        for i in 0..4 {
+            new_players.push(players[sort_keys[i]].clone())
+        }
+        for i in 0..4 {
+            players[i] = new_players.remove(0);
         }
     }
 

@@ -578,6 +578,7 @@ name = "datastructure"
 version = "0.1.0"
 dependencies = [
  "datastructure_macro_derive",
+ "futures-core",
  "tokio",
 ]
 
@@ -1337,6 +1338,8 @@ dependencies = [
  "async-recursion",
  "async-trait",
  "datastructure",
+ "futures-core",
+ "futures-util",
  "lazy_static",
  "log",
  "rand 0.8.5",
