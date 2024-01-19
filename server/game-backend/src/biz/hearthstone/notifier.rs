@@ -2,7 +2,7 @@ use crate::{common::room::SafeRoom, rpc};
 use anyhow::Result;
 use datastructure::AsyncIter;
 use heartstone::{
-    api::{GameNotifier, PlayerDrawCard, TurnAction},
+    api::{GameNotifier, GameRunningNotifier, GameStartingNotifier, PlayerDrawCard, TurnAction},
     game::Game,
     model::{
         Buff, Buffable, Camp, Card, Damageable, Fightline, HeroTrait, Minion, MinionTrait, Target,
@@ -390,7 +390,42 @@ fn pack_target(target: &heartstone::model::Target) -> idl_gen::bss_heartstone::T
 }
 
 #[async_trait::async_trait]
-impl GameNotifier for Notifier {
+impl GameStartingNotifier for Notifier {
+    async fn flush_at_starting(&self) {
+        todo!()
+    }
+
+    fn camp_decide(&self, player: u64, camp: Camp) {
+        todo!()
+    }
+
+    fn starting_card(&self, player: u64, cards: Vec<Card>) {
+        todo!()
+    }
+
+    fn change_starting_card(&self, player: u64, change_card_index: &[usize], new_cards: Vec<Card>) {
+        todo!()
+    }
+
+    fn fightline_choose(&self, player: u64, fightline: Option<Fightline>) {
+        todo!()
+    }
+
+    fn fightline_lock(&self, player: u64, fightline: Fightline) {
+        todo!()
+    }
+
+    fn fightline_unlock(&self, player: u64) {
+        todo!()
+    }
+
+    fn fightline_decide(&self, player: u64, fightline: Fightline) {
+        todo!()
+    }
+}
+
+#[async_trait::async_trait]
+impl GameRunningNotifier for Notifier {
     async fn flush(&self, game: &Game) {
         self.inner.lock().await.flush(game).await
     }
@@ -478,3 +513,5 @@ impl GameNotifier for Notifier {
             .unwrap()
     }
 }
+
+impl GameNotifier for Notifier {}

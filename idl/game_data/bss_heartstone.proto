@@ -1,29 +1,81 @@
 syntax = "proto3";
 package game.bss.hearthstone;
 
+// 位置
 enum Position {
-  Undefined = 0;
-  Front = 1;
-  Back = 2;
+  Front = 0; // 前排
+  Back = 1; // 后排
 }
 
+// 加入房间需要的额外数据
 message JoinRoomExtraData {
   repeated string card_code = 1; // 牌库
 }
 
+// 游戏开始，下发参与的玩家信息
+message GameStartEvent {
+  repeated GamePlayer players = 1;
+}
+
+// 游戏开始下发的玩家信息
+message GamePlayer {
+  int32 index = 1;
+  int64 uuid = 2;
+}
+
 // 游戏开始随机分组事件
 message RandomGroupEvent {
-  repeated int32 group_index_1 = 1;
-  repeated int32 group_index_2 = 2;
+  repeated uint64 group_players_1 = 1;
+  repeated uint64 group_players_2 = 2;
+}
+
+// 准备回合开始
+message StartingTurnStartEvent {}
+
+// 准备回合结束
+message StartingTurnEndEvent {}
+
+// 准备回合行动
+message StartingTurnAction {
+  StartingTurnActionEnum action = 1;
+  optional SelectPositionAction select_position_action = 2;
+  optional LockPositionAction lock_position_action = 3;
+  optional UnlockPositionAction unlock_position_action = 4;
+  optional ReplaceStartingCardAction replace_starting_card_action = 5;
+}
+
+// 准备回合行动类型
+enum StartingTurnActionEnum {
+  Stop = 0; // 客户端计时结束，不再进行准备回合
+  SelectPosition = 1;
+  LockPosition = 2;
+  UnlockPosition = 3;
+  ReplaceStartingCard = 4;
 }
 
 // 玩家选择位置
-message SelectPositionAction { Position position = 1; }
+message SelectPositionAction { optional Position position = 1; }
+
+// 玩家锁定位置
+message LockPositionAction {}
+
+// 玩家解锁位置
+message UnlockPositionAction {}
 
 // 玩家选择位置事件
 message PlayerSelectPositionEvent {
-  int32 player_index = 1;
-  Position position = 2;
+  uint64 player = 1;
+  optional Position position = 2;
+}
+
+// 玩家锁定位置事件
+message PlayerLockPositionEvent {
+  uint64 player = 1;
+}
+
+// 玩家解锁位置事件
+message PlayerUnlockPositionEvent {
+  uint64 player = 1;
 }
 
 // 服务器决定位置
@@ -36,10 +88,10 @@ message ServerDecidePlayerPositionEvent {
 message Card { string card_code = 1; }
 
 // 抽取起始卡牌
-message DrawPrepareCardEvent { repeated Card cards = 1; }
+message DrawStartingCardEvent { repeated Card cards = 1; }
 
 // 更换起始卡牌
-message ReplacePrepareCardAction { repeated int32 card_index = 1; }
+message ReplaceStartingCardAction { repeated int32 card_index = 1; }
 
 // 我的回合，进行行动
 message MyTurnStartEvent {}
@@ -47,6 +99,7 @@ message MyTurnStartEvent {}
 // 我的回合结束，无法行动
 message MyTurnEndEvent {}
 
+// 回合类型
 enum TurnTypeEnum {
   PlayerTurn = 0;
   SwapTurn = 1;
@@ -59,10 +112,12 @@ message NewTurnEvent {
   optional SwapTurnEvent swap_turn = 3;
 }
 
+// 玩家回合
 message PlayerTurnEvent {
   uint64 player_uuid = 1;
 }
 
+// 交换前后排回合
 message SwapTurnEvent {}
 
 // 玩家法力值变化
@@ -77,6 +132,7 @@ message Target {
   optional uint64 player = 2;
 }
 
+// 玩家回合行动类型
 enum PlayerTurnActionEnum {
   PlayerEndTurn = 0;
   PlayerUseCard = 1;
@@ -141,13 +197,14 @@ message DamageEvent {
   int64 damage = 2;
 }
 
-// 抽牌
+// 抽牌结果
 enum DrawCardResult {
   Ok = 0;
   Fire = 1;
   Tired = 2;
 }
 
+// 抽牌事件
 message DrawCardEvent {
   uint64 player_uuid = 1;
   optional Card card = 2;
@@ -155,13 +212,14 @@ message DrawCardEvent {
   optional uint32 tired = 4;
 }
 
-// 随从效果
+// 随从效果类型
 enum MinionEffect {
   Other = 0;
   Battlecry = 1;
   Deathrattle = 2;
 }
 
+// 随从效果事件
 message MinionEffectEvent {
   uint64 minion_id = 1;
   MinionEffect minion_effect = 2;
@@ -185,6 +243,7 @@ message Buff {
   int32 hp_boost = 2;
 }
 
+// buff事件
 message BuffEvent {
   Target target = 1;
   Buff buff = 2;
@@ -206,6 +265,7 @@ message SyncGameStatus {
   optional uint64 turn_uuid = 3;
 }
 
+// 玩家状态
 message PlayerStatus {
   uint64 uuid = 1;
   int64 room_index = 2;
@@ -218,6 +278,7 @@ message PlayerStatus {
   int32 camp = 9;
 }
 
+// 随从状态
 message MinionStatus {
   uint64 uuid = 1;
   Card card = 2;
