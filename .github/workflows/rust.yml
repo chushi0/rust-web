@@ -9,8 +9,20 @@ on:
 
 env:
   CARGO_TEAM_COLOR: always
+  RUST_WEB_ALIYUN_BUCKET_HOST: github action
+  RUST_WEB_ALIYUN_BUCKET_NAME: github action
+  RUST_WEB_ALIYUN_ACCESS_KEY_ID: github action
+  RUST_WEB_ALIYUN_ACCESS_KEY_SECRET: github action
+  RUST_WEB_CRONJOB_BANGUMI_CHAT_HOOK: github action
+  RUST_WEB_BILIBILI_CLIENT_DEDE_USER_ID: github action
+  RUST_WEB_BILIBILI_CLIENT_DEDE_USER_ID_CKMD5: github action
+  RUST_WEB_BILIBILI_CLIENT_SESSDATA: github action
+  RUST_WEB_BILIBILI_CLIENT_BILI_JCT: github action
+  RUST_WEB_FEISHU_APP_ID: github action
+  RUST_WEB_FEISHU_APP_SECRET: github action
+  RUST_WEB_FEISHU_USER_ID: github action
 
-job:
+jobs:
   build:
     runs-on: ubuntu-latest
     steps:
