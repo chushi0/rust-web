@@ -34,11 +34,7 @@ pub struct Transaction<'a> {
 
 pub async fn create_connection(rds: RDS) -> Result<SqliteConnection> {
     let db = rds_name(rds);
-    let path = if cfg!(debug_assertions) {
-        format!("db/{db}.db")
-    } else {
-        format!("/home/chushi0/db/{db}.db")
-    };
+    let path = format!("{}/{db}.db", env!("RUST_WEB_DB_PATH"));
 
     Ok(SqliteConnection::connect(&format!("sqlite://{path}")).await?)
 }

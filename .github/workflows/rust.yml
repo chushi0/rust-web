@@ -21,6 +21,7 @@ env:
   RUST_WEB_FEISHU_APP_ID: github action
   RUST_WEB_FEISHU_APP_SECRET: github action
   RUST_WEB_FEISHU_USER_ID: github action
+  RUST_WEB_DB_PATH: github action
 
 jobs:
   build:
