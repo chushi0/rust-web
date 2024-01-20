@@ -1,0 +1,22 @@
+name: Rust
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  workflow_dispatch:
+
+env:
+  CARGO_TEAM_COLOR: always
+
+job:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build
+        run: cargo build --verbose
+      - name: Run Tests
+        run: cargo test --verbose
+      - name: Run clippy
+        run: cargo clippy -- -Dwarnings
