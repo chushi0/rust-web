@@ -10,6 +10,8 @@ pub trait GameStartingNotifier {
     /// 此时还没有生成游戏对象，因此没有Game引用
     async fn flush_at_starting(&self);
 
+    fn player_uuid(&self, uuid: u64, custom_id: i64);
+
     /// 阵营决定
     fn camp_decide(&self, player: u64, camp: Camp);
     /// 初始手牌抽取
@@ -92,6 +94,8 @@ impl GameNotifier for NopGameNotifier {}
 #[allow(unused_variables)]
 impl GameStartingNotifier for NopGameNotifier {
     async fn flush_at_starting(&self) {}
+
+    fn player_uuid(&self, uuid: u64, custom_id: i64) {}
 
     fn camp_decide(&self, player: u64, camp: Camp) {}
     fn starting_card(&self, player: u64, cards: Vec<Card>) {}

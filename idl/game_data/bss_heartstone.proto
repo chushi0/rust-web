@@ -20,7 +20,7 @@ message GameStartEvent {
 // 游戏开始下发的玩家信息
 message GamePlayer {
   int32 index = 1;
-  int64 uuid = 2;
+  uint64 uuid = 2;
 }
 
 // 游戏开始随机分组事件
@@ -80,8 +80,8 @@ message PlayerUnlockPositionEvent {
 
 // 服务器决定位置
 message ServerDecidePlayerPositionEvent {
-  repeated int32 front_players = 1;
-  repeated int32 back_players = 2;
+  uint64 player = 1;
+  Position position = 2;
 }
 
 // 卡牌
@@ -91,7 +91,10 @@ message Card { string card_code = 1; }
 message DrawStartingCardEvent { repeated Card cards = 1; }
 
 // 更换起始卡牌
-message ReplaceStartingCardAction { repeated int32 card_index = 1; }
+message ReplaceStartingCardAction {
+  repeated int32 card_index = 1; 
+  repeated Card cards = 2;
+}
 
 // 我的回合，进行行动
 message MyTurnStartEvent {}

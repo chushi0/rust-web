@@ -414,6 +414,15 @@ impl Room {
         &self.join_players
     }
 
+    pub fn player_index(&self, user_id: i64) -> Option<usize> {
+        for (index, player) in self.join_players.iter().enumerate() {
+            if player.user_id == user_id {
+                return Some(index);
+            }
+        }
+        None
+    }
+
     /// 设置玩家是否准备
     async fn set_player_ready(
         &mut self,

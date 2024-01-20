@@ -89,9 +89,15 @@ impl Game {
 
         let players: Vec<_> = {
             // 先为这些玩家分配uuid
-            let players = players
+            let players: Vec<_> = players
                 .into_iter()
-                .map(|player| (uuid_increase.gen(), player));
+                .map(|player| (uuid_increase.gen(), player))
+                .collect();
+
+            // 玩家uuid通知
+            for (uuid, config) in &players {
+                game_notifier.player_uuid(*uuid, config.custom_id);
+            }
 
             // 分队
             let mut camp_a = Vec::new();
@@ -133,6 +139,7 @@ impl Game {
             for (player_uuid, _, camp) in &player_with_camp {
                 game_notifier.camp_decide(*player_uuid, *camp)
             }
+            game_notifier.flush_at_starting().await;
 
             // 生成玩家对象
             // 我们需要在此处先生成玩家对象，以便管理手牌、牌库资源

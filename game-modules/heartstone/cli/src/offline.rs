@@ -85,6 +85,8 @@ async fn load_card_pool() -> HashMap<i64, Arc<CardModel>> {
 impl GameStartingNotifier for StdNotifier {
     async fn flush_at_starting(&self) {}
 
+    fn player_uuid(&self, uuid: u64, custom_id: i64) {}
+
     fn camp_decide(&self, player: u64, camp: Camp) {
         println!("camp decide: player={player}, camp={camp:?}")
     }
