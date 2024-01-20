@@ -1,6 +1,9 @@
 fn main() {
     volo_build::ConfigBuilder::default().write().unwrap();
 
+    println!("cargo:rerun-if-changed=../../idl/bss_websocket_client.proto");
+    println!("cargo:rerun-if-changed=../../idl/game_data/bss_heartstone.proto");
+
     protobuf_codegen::Codegen::new()
         .pure()
         .includes(["../../idl"])
