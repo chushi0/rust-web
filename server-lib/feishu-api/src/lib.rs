@@ -59,3 +59,10 @@ pub(crate) async fn get_token() -> Option<String> {
     let mut auth_key = AUTH_KEY.write().await;
     auth_key.get_token_with_fetch().await
 }
+
+#[cfg(test)]
+pub(crate) async fn install_test_key(key: &str) {
+    let mut auth_key = AUTH_KEY.write().await;
+    auth_key.key = key.to_string();
+    auth_key.expire_time = u64::MAX;
+}

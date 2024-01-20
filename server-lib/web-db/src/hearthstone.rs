@@ -219,21 +219,3 @@ pub async fn get_all_resources(db: &mut super::Transaction<'_>) -> Result<Vec<Re
 
     Ok(res)
 }
-
-#[test]
-fn gen_card_info() {
-    let card_info = CardInfo {
-        common_card_info: CommonCardInfo {},
-        special_card_info: SpecialCardInfo::Spell(SpellCardInfo {
-            effects: vec![SpellEffect::Normal {
-                effects: vec![CardEffect::DealDamage {
-                    target: Target::OppositeAllEntity,
-                    damage: 4,
-                }],
-            }],
-        }),
-    };
-
-    println!("{}", serde_json::to_string_pretty(&card_info).unwrap());
-    println!("{}", serde_json::to_string(&card_info).unwrap());
-}

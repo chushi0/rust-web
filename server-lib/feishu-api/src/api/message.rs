@@ -62,8 +62,17 @@ pub async fn send_message(
     receive_id_type: ReceiveIdType,
     req: SendMessageRequest,
 ) -> Result<SendMessageResponse> {
+    send_message_internal(super::FEISHU_HOST, receive_id_type, req).await
+}
+
+async fn send_message_internal(
+    host: &str,
+    receive_id_type: ReceiveIdType,
+    req: SendMessageRequest,
+) -> Result<SendMessageResponse> {
     let url = format!(
-        "https://open.feishu.cn/open-apis/im/v1/messages?receive_id_type={}",
+        "{}/open-apis/im/v1/messages?receive_id_type={}",
+        host,
         Into::<&'static str>::into(receive_id_type)
     );
     let token = crate::get_token().await.ok_or(anyhow!("get token fail"))?;
@@ -156,23 +165,94 @@ pub async fn upload_image(image: Vec<u8>) -> Result<UploadImageResponse> {
     Ok(resp)
 }
 
-#[test]
-pub fn test_get_tenant_access_token() {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(async {
-            let res = send_message(
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::api::USER_ID;
+    use crate::install_test_key;
+    use mockito::Matcher;
+    use serde_json::json;
+
+    #[test]
+    pub fn test_send_message() {
+        tokio_test::block_on(async {
+            let mock_token = "t-caecc734c2e3328a62489fe0648c4b98779515d3";
+            install_test_key(mock_token).await;
+
+            let mut server = mockito::Server::new();
+
+            let expect_body = Matcher::Json(json!({
+                "receive_id": USER_ID,
+                "msg_type": "text",
+                "content": "{\"text\":\"test content\"}",
+                "uuid": null,
+            }));
+
+            let response_body = json!({
+                "code": 0,
+                "msg": "success",
+                "data": {
+                    "message_id": "om_dc13264520392913993dd051dba21dcf",
+                    "root_id": "om_40eb06e7b84dc71c03e009ad3c754195",
+                    "parent_id": "om_d4be107c616aed9c1da8ed8068570a9f",
+                    "thread_id": "omt_d4be107c616a",
+                    "msg_type": "card",
+                    "create_time": "1615380573411",
+                    "update_time": "1615380573411",
+                    "deleted": false,
+                    "updated": false,
+                    "chat_id": "oc_5ad11d72b830411d72b836c20",
+                    "sender": {
+                        "id": "cli_9f427eec54ae901b",
+                        "id_type": "app_id",
+                        "sender_type": "app",
+                        "tenant_key": "736588c9260f175e"
+                    },
+                    "body": {
+                        "content": "{\"text\":\"@_user_1 test content\"}"
+                    },
+                    "mentions": [
+                        {
+                            "key": "@_user_1",
+                            "id": "ou_155184d1e73cbfb8973e5a9e698e74f2",
+                            "id_type": "open_id",
+                            "name": "Tom",
+                            "tenant_key": "736588c9260f175e"
+                        }
+                    ],
+                    "upper_message_id": "om_40eb06e7b84dc71c03e009ad3c754195"
+                }
+            })
+            .to_string();
+
+            let mock = server
+                .mock("POST", "/open-apis/im/v1/messages")
+                .match_query("receive_id_type=open_id")
+                .match_header(
+                    "Authorization",
+                    "Bearer t-caecc734c2e3328a62489fe0648c4b98779515d3",
+                )
+                .match_header("Content-Type", "application/json")
+                .match_body(expect_body)
+                .with_header("Content-Type", "application/json")
+                .with_body(response_body)
+                .create();
+
+            let res = send_message_internal(
+                &server.url(),
                 ReceiveIdType::OpenId,
                 SendMessageRequest {
-                    receive_id: super::USER_ID.to_string(),
+                    receive_id: USER_ID.to_string(),
                     msg_type: "text".to_string(),
-                    content: "{\"text\":\"test_content\"}".to_string(),
+                    content: "{\"text\":\"test content\"}".to_string(),
                     uuid: None,
                 },
             )
-            .await;
-            println!("{res:#?}");
-        })
+            .await
+            .expect("this http request should return success");
+
+            assert_eq!(res.code, 0);
+            mock.assert();
+        });
+    }
 }
