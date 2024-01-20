@@ -90,6 +90,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
         }
 
         let Some(ref mut watcher) = *watcher else {
+            log::error!("watcher is none, but we should create it before");
             return None;
         };
 

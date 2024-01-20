@@ -216,7 +216,7 @@ impl Game {
                 Lock(Fightline),
             }
             enum FutureResult {
-                TIMEOUT,
+                Timeout,
                 PlayerStartingAction {
                     index: usize,
                     action: Option<PlayerStartingAction>,
@@ -224,7 +224,6 @@ impl Game {
             }
 
             let mut starting_players: HashMap<_, _> = (0..4)
-                .into_iter()
                 .map(|index| {
                     (
                         index,
@@ -248,7 +247,7 @@ impl Game {
             // 超时时间设定
             let prepare_timeout = async {
                 tokio::time::sleep(std::time::Duration::from_secs(60)).await;
-                FutureResult::TIMEOUT
+                FutureResult::Timeout
             };
             // 玩家输入
             let player_action_spawner = |index: usize| {
@@ -271,7 +270,7 @@ impl Game {
             // 轮询检查输入
             while let Some(result) = concurrency.next().await {
                 match result {
-                    FutureResult::TIMEOUT => break,
+                    FutureResult::Timeout => break,
                     FutureResult::PlayerStartingAction {
                         index: _,
                         action: None, // 明确表示不会有后续输入
@@ -295,7 +294,7 @@ impl Game {
                             .expect("uuid player should exist");
                         match action {
                             PlayerStartingAction::SwapStartingCards { cards_index } => {
-                                if !starting_player.replace_cards.is_some() {
+                                if starting_player.replace_cards.is_none() {
                                     player.swap_starting_card(&cards_index, rng).await;
                                     let cards = player.hand_cards().await;
                                     let mut card_refs = Vec::new();
@@ -323,8 +322,8 @@ impl Game {
                                 // 同队其他玩家不能锁定
                                 // 为了满足借用检查器，我们先拿到我们需要的参数，丢弃starting_player。在完成检查后，再重新获取starting_player
                                 let camp = starting_player.camp;
-                                if !starting_players.iter().any(|(uuid, player)| {
-                                    uuid != uuid
+                                if !starting_players.iter().any(|(player_uuid, player)| {
+                                    uuid != *player_uuid
                                         && player.camp == camp
                                         && matches!(player.position, Position::Lock(_))
                                 }) {
@@ -464,8 +463,8 @@ impl Game {
         for i in 0..4 {
             new_players.push(players[sort_keys[i]].clone())
         }
-        for i in 0..4 {
-            players[i] = new_players.remove(0);
+        for (i, player) in new_players.iter_mut().enumerate().take(4) {
+            players[i] = player.clone();
         }
     }
 

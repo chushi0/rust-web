@@ -60,7 +60,7 @@ impl<'a, Output> Stream for Concurrency<'a, Output> {
 
         if let Some((index, result)) = finish_task {
             // this task has been done
-            _ = self.futures.remove(index);
+            drop(self.futures.remove(index));
             return Poll::Ready(Some(result));
         }
 

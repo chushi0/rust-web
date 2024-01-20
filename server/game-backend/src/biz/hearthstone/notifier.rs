@@ -139,11 +139,7 @@ impl NotifierInternal {
                         return;
                     };
 
-                    let mut events: Vec<_> = events
-                        .into_iter()
-                        .filter(Option::is_some)
-                        .map(Option::unwrap)
-                        .collect();
+                    let mut events: Vec<_> = events.into_iter().flatten().collect();
 
                     if game_start_event {
                         let event = match pack_game_event(GameStartEvent {
@@ -323,7 +319,7 @@ impl StartingNotifyEvent {
                 }
             }
 
-            return false;
+            false
         };
 
         match self {
