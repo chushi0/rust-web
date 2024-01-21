@@ -1,0 +1,15 @@
+[package]
+name = "web-db"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.71"
+tokio = "1.28.1"
+serde = { version = "1", features = ["derive"] }
+lazy_static = "1.4.0"
+sqlx = { version = "0.6", features = [ "runtime-tokio-rustls", "sqlite" ] }
+futures = "0.3.28"
+serde_json = "1.0.96"

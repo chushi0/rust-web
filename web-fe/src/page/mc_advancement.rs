@@ -206,7 +206,7 @@ pub fn AdvancementComponent(props: &AdvancementComponentProps) -> Html {
                         let mut list = vec![];
 
                         for req in requirement {
-                            let color = if has_finish(&props.player_data, &node, &req) {
+                            let color = if has_finish(&props.player_data, &node, req) {
                                 "green"
                             } else {
                                 "black"
@@ -435,7 +435,7 @@ fn translate_global_data(
         tree.all_nodes.push(node);
     }
 
-    for (_id, node) in &nodes {
+    for node in nodes.values() {
         match &node.advancement.parent {
             Some(parent_id) => nodes
                 .get(&format!("{parent_id}.json"))

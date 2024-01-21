@@ -1,0 +1,95 @@
+syntax = "proto3";
+package bss;
+
+message BoxProtobufPayload {
+  string name = 1;
+  bytes payload = 2;
+}
+
+message ClientLoginRequest {
+  string account = 1;
+  string password = 2;
+}
+
+message ClientLoginResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+message CreateRoomRequest {
+  int32 game_type = 1;
+  bool init_public = 2;
+  int32 game_version = 3;
+  optional bytes extra_data = 4;
+}
+
+message JoinRoomRequest {
+  int32 game_type = 1;
+  int32 room_id = 2;
+  int32 game_version = 3;
+  optional bytes extra_data = 4;
+}
+
+message MateRoomRequest {
+  int32 game_type = 1;
+  int32 game_version = 3;
+  optional bytes extra_data = 4;
+}
+
+message ReconnectRoomRequest {
+  int32 game_type = 1;
+  int32 game_version = 3;
+}
+
+message JoinRoomResponse {
+  int32 code = 1;
+  string message = 2;
+  optional int32 room_id = 3;
+  repeated RoomPlayer players = 4;
+}
+
+message RoomPlayerAction {
+  optional bool ready = 1;
+  optional string chat = 2;
+  repeated int32 chat_receiver = 3;
+  optional bool make_public = 4;
+}
+
+message RoomPlayerChangeEvent {
+  repeated RoomPlayer players = 1;
+  bool public = 2;
+}
+
+message RoomPlayer {
+  string account = 1;
+  string display_name = 2;
+  int32 index = 3;
+  bool ready = 4;
+}
+
+message PlayerChatEvent {
+  int32 player_index = 1;
+  repeated int32 receiver_player_indexes = 2;
+  string message = 3;
+}
+
+message LeaveRoomRequest {}
+
+message LeaveRoomResponse {
+  int32 code = 1;
+  string message = 2;
+}
+
+message GameEvent {
+  string event_type = 1;
+  bytes payload = 2;
+}
+
+message GameEventList {
+  repeated GameEvent list = 1;
+}
+
+message GameAction {
+  string action_type = 1;
+  bytes payload = 2;
+}

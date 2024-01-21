@@ -1,0 +1,20 @@
+[package]
+edition = "2021"
+name = "heartstone"
+version = "0.1.0"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+datastructure = {path = "../../lib/datastructure"}
+web-db = {path = "../../server-lib/web-db"}
+
+anyhow = "1"
+async-recursion = "1.0.5"
+async-trait = "0.1"
+futures-core = "0.3.30"
+futures-util = "0.3.30"
+lazy_static = "1.4.0"
+log = "0.4.17"
+rand = "0.8.5"
+tokio = {version = "1", features = ["full"]}

@@ -12,7 +12,7 @@ pub struct NavBarProps {
 
 #[function_component]
 pub fn NavBar(props: &NavBarProps) -> Html {
-    let nav_items = vec![
+    let nav_items = [
         Item::Item {
             id: "home",
             title: "动态",
@@ -152,9 +152,8 @@ fn NavItem(props: &NavItemProps) -> Html {
                     </ul>
                 </li>
             }
-        }
-        // Item::Divider => html! {
-        //     <li><hr class="dropdown-divider" /></li>
-        // },
+        } // Item::Divider => html! {
+          //     <li><hr class="dropdown-divider" /></li>
+          // },
     }
 }

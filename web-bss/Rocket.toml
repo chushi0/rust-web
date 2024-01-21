@@ -1,9 +1,0 @@
-[default]
-address = "0.0.0.0"
-limits = {form = "64 KiB", json = "1 MiB"}
-
-[debug]
-port = 8000
-
-[release]
-port = 13500

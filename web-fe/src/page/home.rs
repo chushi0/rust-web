@@ -82,7 +82,7 @@ fn EventDetails() -> HtmlResult {
         <>
             {news.iter().map(|data| html!{
                 <EventCard
-                    time={data.time.clone().date().format(&time_format).unwrap_or("".to_string())}
+                    time={data.time.date().format(&time_format).unwrap_or("".to_string())}
                     title={data.title.clone()}
                     msg={data.msg.clone()}
                     link={data.link.clone()} />
@@ -125,13 +125,13 @@ fn use_events() -> SuspensionResult<Rc<Vec<EventData>>> {
 }
 
 async fn load_events() -> Result<Vec<EventData>, Error> {
-    Ok(gloo_net::http::Request::get("/api/home/events")
+    gloo_net::http::Request::get("/api/home/events")
         .send()
         .await?
         .json::<Model<Vec<EventData>>>()
         .await?
         .data
-        .ok_or(Error::GlooError("empty data".to_string()))?)
+        .ok_or(Error::GlooError("empty data".to_string()))
 }
 
 #[function_component]

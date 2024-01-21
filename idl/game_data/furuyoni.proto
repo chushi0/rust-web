@@ -1,0 +1,47 @@
+syntax = "proto3";
+package game.furuyoni;
+
+message PlayerInfo {
+  repeated int64 select_character = 1; // 选择的角色
+  int32 health = 2;                    // 命
+  int32 shield = 3;                    // 护甲
+  int32 magic_point = 4;               // 气
+  int32 movement_point = 5;            // 集中力
+  int32 hand_count = 6;                // 手牌数量
+  int32 hide_count = 7;                // 盖牌数量
+  int32 deck_count = 8;                // 牌库剩余牌数量
+  repeated CardInfo used_card = 9;     // 打出的牌
+
+  string extra = 255; // 其他信息（json格式）
+}
+
+message CardInfo {
+  int64 card_id = 1;
+  int32 flag_count = 2;
+}
+
+message MultiCharacters { repeated int64 character_ids = 1; }
+
+// 玩家选择角色
+message StartSelectCharactersEvent {
+  repeated int64 selectable_character_ids = 1;
+}
+
+// 玩家完成选择角色
+message SelectedCharactersEvent {
+  map<int64, MultiCharacters> select_character_ids = 1;
+}
+
+// 玩家得到起始手牌
+message GetStartingHandEvent {
+  repeated int64 card_ids = 1; // 卡牌id
+  bool resetable = 2;          // 可否重置
+}
+
+// 决定先后手
+message DecideOrderEvent {
+  int64 start_user_id = 1; // 先手玩家user_id
+}
+
+// 回合开始
+message StartingTurnEvent { int64 user_id = 1; }

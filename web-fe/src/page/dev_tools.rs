@@ -84,7 +84,7 @@ impl Component for DevToolsPage {
                     let content = node.value();
                     content
                         .trim()
-                        .split("\n")
+                        .split('\n')
                         .filter(|s| !s.is_empty())
                         .map(|s| s.to_string())
                         .collect()
@@ -193,7 +193,7 @@ impl OperationItem {
 }
 
 trait Operation {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String>;
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String>;
     fn name(&self) -> &'static str;
 }
 
@@ -207,7 +207,7 @@ struct DistinctMinus;
 struct Sort;
 
 impl Operation for Distinct {
-    fn calc(&self, a: &Vec<String>, _b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], _b: &[String]) -> Vec<String> {
         let mut set = HashSet::new();
         let mut res = Vec::new();
 
@@ -228,7 +228,7 @@ impl Operation for Distinct {
 }
 
 impl Operation for Extraction {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String> {
         let mut res = Vec::new();
         let mut count = HashMap::new();
 
@@ -256,7 +256,7 @@ impl Operation for Extraction {
 }
 
 impl Operation for Conjunction {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String> {
         let mut res = Vec::new();
         let mut count = HashMap::new();
 
@@ -282,7 +282,7 @@ impl Operation for Conjunction {
 }
 
 impl Operation for Minus {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String> {
         let mut res = Vec::new();
         let mut count = HashMap::new();
 
@@ -313,7 +313,7 @@ impl Operation for Minus {
 }
 
 impl Operation for DistinctExtraction {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String> {
         Distinct {}.calc(&(Extraction {}.calc(a, b)), &Vec::new())
     }
 
@@ -323,7 +323,7 @@ impl Operation for DistinctExtraction {
 }
 
 impl Operation for DistinctConjunction {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String> {
         Distinct {}.calc(&(Conjunction {}.calc(a, b)), &Vec::new())
     }
 
@@ -333,7 +333,7 @@ impl Operation for DistinctConjunction {
 }
 
 impl Operation for DistinctMinus {
-    fn calc(&self, a: &Vec<String>, b: &Vec<String>) -> Vec<String> {
+    fn calc(&self, a: &[String], b: &[String]) -> Vec<String> {
         Distinct {}.calc(&(Minus {}.calc(a, b)), &Vec::new())
     }
 
@@ -343,8 +343,8 @@ impl Operation for DistinctMinus {
 }
 
 impl Operation for Sort {
-    fn calc(&self, a: &Vec<String>, _b: &Vec<String>) -> Vec<String> {
-        let mut res = a.clone();
+    fn calc(&self, a: &[String], _b: &[String]) -> Vec<String> {
+        let mut res = a.to_vec();
         res.sort();
         res
     }

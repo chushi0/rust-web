@@ -1,0 +1,89 @@
+syntax = "proto3";
+package game_backend;
+
+enum GameType {
+  FURUYONI = 0;
+  HEARTHSTONE = 1;
+}
+
+enum JoinRoomStrategy {
+  CREATE = 0;
+  JOIN = 1;
+  MATE = 2;
+}
+
+message RoomPlayer {
+  int64 user_id = 1;
+  int32 index = 2;
+  bool ready = 3;
+  bool online = 4;
+  bool master = 5;
+}
+
+message JoinRoomRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  JoinRoomStrategy strategy = 3;
+  optional int32 room_id = 4; // 加入的房间号
+  optional bool public = 5; // 创建房间时，如果设置为true，则创建公开房间
+  optional bytes extra_data = 6; // 加入房间携带的额外信息
+}
+
+message JoinRoomResponse { 
+  int32 roomId = 1;
+  repeated RoomPlayer players = 2;
+}
+
+message SetPlayerReadyRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+  bool ready = 4;
+}
+
+message SetPlayerReadyResponse {}
+
+message SetRoomPublicRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+}
+
+message SetRoomPublicResponse {}
+
+message LeaveRoomRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+}
+
+message LeaveRoomResponse {}
+
+message SendGameChatRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+  repeated int32 receiver_user_id = 4;
+  string content = 5;
+}
+
+message SendGameChatResponse {}
+
+message SubmitPlayerActionRequest {
+  int64 user_id = 1;
+  GameType game_type = 2;
+  int32 room_id = 3;
+  string action_name = 4;
+  bytes payload = 5;
+}
+
+message SubmitPlayerActionResponse {}
+
+service GameBackendService {
+  rpc JoinRoom(JoinRoomRequest) returns (JoinRoomResponse);
+  rpc SetPlayerReady(SetPlayerReadyRequest) returns (SetPlayerReadyResponse);
+  rpc SetRoomPublic(SetRoomPublicRequest) returns (SetRoomPublicResponse);
+  rpc LeaveRoom(LeaveRoomRequest) returns (LeaveRoomResponse);
+  rpc SendGameChat(SendGameChatRequest) returns (SendGameChatResponse);
+  rpc SubmitPlayerAction(SubmitPlayerActionRequest) returns (SubmitPlayerActionResponse);
+}

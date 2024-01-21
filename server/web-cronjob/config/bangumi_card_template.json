@@ -1,0 +1,48 @@
+{
+    "elements": [
+        {
+            "tag": "div",
+            "text": {
+                "content": "${ep_title}",
+                "tag": "plain_text"
+            }
+        },
+        {
+            "tag": "img",
+            "img_key": "${cover}",
+            "alt": {
+                "tag": "plain_text",
+                "content": ""
+            },
+            "mode": "fit_horizontal",
+            "preview": true,
+            "compact_width": false
+        },
+        {
+            "tag": "action",
+            "actions": [
+                {
+                    "tag": "button",
+                    "text": {
+                        "tag": "plain_text",
+                        "content": "前往观看"
+                    },
+                    "type": "primary",
+                    "multi_url": {
+                        "url": "${url}",
+                        "pc_url": "",
+                        "android_url": "",
+                        "ios_url": ""
+                    }
+                }
+            ]
+        }
+    ],
+    "header": {
+        "template": "blue",
+        "title": {
+            "content": "【番剧更新通知】${fan_title}",
+            "tag": "plain_text"
+        }
+    }
+}
