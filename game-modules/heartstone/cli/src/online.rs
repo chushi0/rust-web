@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use futures_util::{stream::StreamExt, SinkExt};
-use heartstone::model::CardModel;
+use heartstone::model::CardInfo;
 use idl_gen::{
     bss_heartstone::{
         BuffEvent, DamageEvent, DrawCardEvent, JoinRoomExtraData, MinionAttackEvent,
@@ -63,7 +63,7 @@ impl crate::Client for Client {
 type WsStream = AsyncClient<Box<dyn AsyncNetworkStream + Send + Sync + Unpin>>;
 
 impl Client {
-    async fn load_card_pool(&self) -> Result<HashMap<i64, Arc<CardModel>>> {
+    async fn load_card_pool(&self) -> Result<HashMap<String, Arc<CardInfo>>> {
         #[derive(Debug, Deserialize)]
         struct GetCardResp {
             code: i32,
@@ -96,7 +96,7 @@ impl Client {
             bail!("get heartstone fail: code={}, msg={}", resp.code, resp.msg);
         }
 
-        let map: HashMap<i64, Arc<CardModel>> = resp
+        let map: HashMap<String, Arc<CardInfo>> = resp
             .data
             .into_iter()
             .enumerate()
@@ -115,13 +115,18 @@ impl Client {
                 update_time: 0,
                 enable: true,
             })
-            .map(|card| -> Result<CardModel> {
+            .map(|card| -> Result<CardInfo> {
                 let card_info = serde_json::from_str(&card.card_info)?;
-                Ok(CardModel { card_info, card })
+                Ok(card_info)
             })
-            .collect::<Result<Vec<CardModel>>>()?
+            .collect::<Result<Vec<CardInfo>>>()?
             .into_iter()
-            .map(|card_model| (card_model.card.rowid, Arc::new(card_model)))
+            .map(|card_model| {
+                (
+                    card_model.common_card_info.code.clone(),
+                    Arc::new(card_model),
+                )
+            })
             .collect();
 
         crate::io().cache_cards(&map.values().cloned().collect::<Vec<_>>());
@@ -189,13 +194,13 @@ impl Client {
     async fn join_room(
         &self,
         stream: &mut WsStream,
-        cards: HashMap<i64, Arc<CardModel>>,
+        cards: HashMap<String, Arc<CardInfo>>,
     ) -> Result<Option<i32>> {
         // 牌库是每张牌（衍生牌除外）各一张
         let deck: Vec<String> = cards
             .iter()
-            .filter(|(_, model)| !model.card.derive)
-            .map(|(_, model)| model.card.code.clone())
+            .filter(|(_, model)| !model.common_card_info.derive)
+            .map(|(_, model)| model.common_card_info.code.clone())
             .collect();
 
         let extra_data = JoinRoomExtraData {

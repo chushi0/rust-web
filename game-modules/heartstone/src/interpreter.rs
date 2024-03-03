@@ -1,16 +1,14 @@
 use crate::{
     game::Game,
     model::{
-        BattlefieldTrait, Buff, Camp, Card, CardModel, Fightline, HeroTrait, Minion, MinionTrait,
+        BattlefieldTrait, Buff, Camp, Card, CardEffect, CardInfo, CardInfoTarget as ModelTarget,
+        Fightline, HeroTrait, Minion, MinionEffect, MinionTrait, SpecialCardInfo, SpellEffect,
         Target,
     },
     player::{Player, PlayerTrait},
 };
 use datastructure::{SyncHandle, TwoValueEnum};
 use std::sync::Arc;
-use web_db::hearthstone::{
-    CardEffect, MinionEffect, SpecialCardInfo, SpellEffect, Target as ModelTarget,
-};
 
 pub enum EventType {
     // 随从
@@ -33,7 +31,7 @@ pub struct PerformResult {
     pub prevent_normal_effect: bool,
 }
 
-pub fn has_event_type(model: Arc<CardModel>, event_type: EventType) -> bool {
+pub fn has_event_type(model: Arc<CardInfo>, event_type: EventType) -> bool {
     match query_card_effects(model, event_type) {
         Some(_data) => true,
         None => false,
@@ -77,7 +75,7 @@ pub async fn interpreter(
     event_type: EventType,   // 触发事件类型
     trigger: Trigger,        // 触发对象
     pointer: Option<Target>, // 触发对象所指定的对象（如果由玩家所指定）
-    model: Arc<CardModel>,   // 触发对象的卡牌模型
+    model: Arc<CardInfo>,    // 触发对象的卡牌模型
 ) -> PerformResult {
     // 递归过深熔断
     if game.interpreter_depth > 20 {
@@ -163,8 +161,8 @@ pub async fn interpreter(
     result
 }
 
-fn query_card_effects(model: Arc<CardModel>, event_type: EventType) -> Option<Vec<CardEffect>> {
-    match &model.card_info.special_card_info {
+fn query_card_effects(model: Arc<CardInfo>, event_type: EventType) -> Option<Vec<CardEffect>> {
+    match &model.special_card_info {
         SpecialCardInfo::Minion(info) => {
             for effect in &info.effects {
                 match effect {

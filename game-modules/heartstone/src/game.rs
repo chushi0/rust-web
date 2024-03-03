@@ -2,8 +2,8 @@ use crate::{
     api::{self, GameNotifier, NopGameNotifier, PlayerDrawCard},
     interpreter::{has_event_type, interpreter, EventType, Trigger},
     model::{
-        Battlefield, BattlefieldTrait, Buff, Buffable, Camp, Card, CardModel, CardPool, Damageable,
-        Fightline, HeroTrait, Minion, MinionTrait, Target, UuidGenerator,
+        Battlefield, BattlefieldTrait, Buff, Buffable, Camp, Card, CardInfo, CardPool, CardType,
+        Damageable, Fightline, HeroTrait, Minion, MinionTrait, Target, UuidGenerator,
     },
     player::{AIPlayerBehavior, Player, PlayerBehavior, PlayerStartingAction, PlayerTrait},
 };
@@ -11,7 +11,6 @@ use datastructure::{AsyncIter, Concurrency, CycleArrayVector, SyncHandle, TwoVal
 use futures_util::stream::StreamExt;
 use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
 use std::{collections::HashMap, sync::Arc};
-use web_db::hearthstone::CardType;
 
 #[derive(Debug)]
 pub struct Config {
@@ -36,7 +35,7 @@ pub struct PlayerConfig {
     pub max_hero_hp: u32,
     pub behavior: Arc<dyn PlayerBehavior>,
     pub camp: Option<Camp>,
-    pub deck: HashMap<i64, u32>, // key: card_id, value: count
+    pub deck: HashMap<String, u32>, // key: card_code, value: count
 }
 
 impl Default for PlayerConfig {
@@ -549,11 +548,11 @@ impl Game {
 }
 
 impl Game {
-    pub(crate) async fn query_model_by_code(&self, code: &str) -> Option<Arc<CardModel>> {
+    pub(crate) async fn query_model_by_code(&self, code: &str) -> Option<Arc<CardInfo>> {
         let models: Vec<_> = self
             .card_pool
             .values()
-            .filter(|model| model.card.code == code)
+            .filter(|model| model.common_card_info.code == code)
             .collect();
 
         models.first().map(|model| (*model).clone())
@@ -672,12 +671,12 @@ impl Game {
         let card = card.get().await;
         let model = card.model();
 
-        let cost_mana = model.card.mana_cost;
+        let cost_mana = model.common_card_info.mana_cost;
         player.cost_mana(cost_mana).await;
         self.game_notifier
             .player_use_card(player.uuid().await, card.clone(), cost_mana);
 
-        match model.card_type() {
+        match model.common_card_info.card_type {
             CardType::Minion => {
                 self.minion_summon_with_battlecry(&card, player.camp().await, player, target)
                     .await;

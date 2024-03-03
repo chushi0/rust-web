@@ -3,7 +3,7 @@ use heartstone::{
     api::{GameNotifier, GameRunningNotifier, GameStartingNotifier, PlayerDrawCard, TurnAction},
     game::{Config, Game, PlayerConfig},
     model::{
-        Buff, Buffable, Camp, Card, CardModel, Damageable, Fightline, HeroTrait, Minion,
+        Buff, Buffable, Camp, Card, CardInfo, Damageable, Fightline, HeroTrait, Minion,
         MinionTrait, Target,
     },
     player::{Player, PlayerBehavior, PlayerStartingAction, PlayerTrait, PlayerTurnAction},
@@ -43,8 +43,8 @@ impl crate::Client for Client {
             // 牌库是每张牌（衍生牌除外）各一张
             let deck = card_pool
                 .iter()
-                .filter(|(_, model)| !model.card.derive)
-                .map(|(id, _)| (*id, 1))
+                .filter(|(_, model)| !model.common_card_info.derive)
+                .map(|(id, _)| (id.clone(), 1))
                 .collect();
 
             let behavior = Arc::new(StdBehavior) as Arc<dyn PlayerBehavior>;
@@ -61,7 +61,7 @@ impl crate::Client for Client {
     }
 }
 
-async fn load_card_pool() -> HashMap<i64, Arc<CardModel>> {
+async fn load_card_pool() -> HashMap<String, Arc<CardInfo>> {
     let mut db = web_db::create_connection(web_db::RDS::Hearthstone)
         .await
         .unwrap();
@@ -72,7 +72,7 @@ async fn load_card_pool() -> HashMap<i64, Arc<CardModel>> {
     let mut map = HashMap::new();
     for card in cards {
         let card_info = serde_json::from_str(&card.card_info).unwrap();
-        map.insert(card.rowid, Arc::new(CardModel { card, card_info }));
+        map.insert(card.code.clone(), Arc::new(card_info));
     }
 
     crate::io().cache_cards(&map.values().map(Arc::clone).collect::<Vec<_>>());
@@ -135,7 +135,13 @@ impl GameRunningNotifier for StdNotifier {
                             .into_iter()
                             .async_map(|card| async move {
                                 idl_gen::bss_heartstone::Card {
-                                    card_code: card.get().await.model().card.code.clone(),
+                                    card_code: card
+                                        .get()
+                                        .await
+                                        .model()
+                                        .common_card_info
+                                        .code
+                                        .clone(),
                                     ..Default::default()
                                 }
                             })
@@ -170,7 +176,7 @@ impl GameRunningNotifier for StdNotifier {
                     MinionStatus {
                         uuid: minion.uuid().await,
                         card: MessageField::some(idl_gen::bss_heartstone::Card {
-                            card_code: minion.model().await.card.code.clone(),
+                            card_code: minion.model().await.common_card_info.code.clone(),
                             ..Default::default()
                         }),
                         atk: minion.atk().await,
@@ -233,7 +239,7 @@ impl GameRunningNotifier for StdNotifier {
             PlayerDrawCard::Tired(_) => None,
         }
         .map(|card| idl_gen::bss_heartstone::Card {
-            card_code: card.model().card.code.clone(),
+            card_code: card.model().common_card_info.code.clone(),
             ..Default::default()
         });
 
@@ -265,7 +271,7 @@ impl GameRunningNotifier for StdNotifier {
             player_uuid: player,
             card_index: 0,
             card: MessageField::some(idl_gen::bss_heartstone::Card {
-                card_code: card.model().card.code.clone(),
+                card_code: card.model().common_card_info.code.clone(),
                 ..Default::default()
             }),
             cost_mana,
@@ -297,7 +303,7 @@ impl GameRunningNotifier for StdNotifier {
         let event = MinionEnterEvent {
             minion_id: minion.uuid(),
             card: MessageField::some(idl_gen::bss_heartstone::Card {
-                card_code: minion.model().card.code.clone(),
+                card_code: minion.model().common_card_info.code.clone(),
                 ..Default::default()
             }),
             group: camp as i32,

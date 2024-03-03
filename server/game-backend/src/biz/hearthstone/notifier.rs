@@ -334,7 +334,7 @@ impl StartingNotifyEvent {
                         cards: cards
                             .iter()
                             .map(|card| Card {
-                                card_code: card.model().card.code.clone(),
+                                card_code: card.model().common_card_info.code.clone(),
                                 ..Default::default()
                             })
                             .collect(),
@@ -358,7 +358,7 @@ impl StartingNotifyEvent {
                         cards: cards
                             .iter()
                             .map(|card| Card {
-                                card_code: card.model().card.code.clone(),
+                                card_code: card.model().common_card_info.code.clone(),
                                 ..Default::default()
                             })
                             .collect(),
@@ -512,7 +512,7 @@ impl RunningNotifyEvent {
                     PlayerDrawCard::Tired(_) => None,
                 }
                 .map(|card| Card {
-                    card_code: card.model().card.code.clone(),
+                    card_code: card.model().common_card_info.code.clone(),
                     ..Default::default()
                 });
 
@@ -544,7 +544,7 @@ impl RunningNotifyEvent {
                 player_uuid: *player,
                 card_index: 0,
                 card: MessageField::some(Card {
-                    card_code: card.model().card.code.clone(),
+                    card_code: card.model().common_card_info.code.clone(),
                     ..Default::default()
                 }),
                 cost_mana: *cost_mana,
@@ -569,7 +569,7 @@ impl RunningNotifyEvent {
                 pack_game_event(MinionEnterEvent {
                     minion_id: minion.uuid(),
                     card: MessageField::some(Card {
-                        card_code: minion.model().card.code.clone(),
+                        card_code: minion.model().common_card_info.code.clone(),
                         ..Default::default()
                     }),
                     group: *camp as i32,
@@ -637,7 +637,13 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
                             .into_iter()
                             .async_map(|card| async move {
                                 idl_gen::bss_heartstone::Card {
-                                    card_code: card.get().await.model().card.code.clone(),
+                                    card_code: card
+                                        .get()
+                                        .await
+                                        .model()
+                                        .common_card_info
+                                        .code
+                                        .clone(),
                                     ..Default::default()
                                 }
                             })
@@ -673,7 +679,7 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
                 MinionStatus {
                     uuid: minion.uuid().await,
                     card: MessageField::some(idl_gen::bss_heartstone::Card {
-                        card_code: minion.model().await.card.code.clone(),
+                        card_code: minion.model().await.common_card_info.code.clone(),
                         ..Default::default()
                     }),
                     atk: minion.atk().await,

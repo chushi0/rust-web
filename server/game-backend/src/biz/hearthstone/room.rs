@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use async_trait::async_trait;
 use heartstone::{
     game::{Config, Game, PlayerConfig},
-    model::{CardModel, CardPool},
+    model::{CardInfo, CardPool},
 };
 use idl_gen::{bss_heartstone::JoinRoomExtraData, bss_websocket_client::BoxProtobufPayload};
 use protobuf::Message;
@@ -65,7 +65,7 @@ impl Room {
         let card_pool = Self::get_all_card().await?;
         let card_name_map: HashMap<_, _> = card_pool
             .values()
-            .map(|model| (model.card.code.clone(), model.clone()))
+            .map(|model| (model.common_card_info.code.clone(), model.clone()))
             .collect();
 
         let room = safe_room.lock().await;
@@ -86,7 +86,7 @@ impl Room {
                     .map(|card_name| {
                         card_name_map
                             .get(&card_name)
-                            .map(|model| model.card.rowid)
+                            .map(|model| model.common_card_info.code.clone())
                             .ok_or_else(|| anyhow!("unknown card {card_name}"))
                     })
                     .collect::<Result<Vec<_>>>()?
@@ -128,11 +128,16 @@ impl Room {
             .into_iter()
             .map(|card| {
                 let card_info = serde_json::from_str(&card.card_info)?;
-                Ok(CardModel { card, card_info })
+                Ok(card_info)
             })
-            .collect::<Result<Vec<CardModel>>>()?
+            .collect::<Result<Vec<CardInfo>>>()?
             .into_iter()
-            .map(|card_model| (card_model.card.rowid, Arc::new(card_model)))
+            .map(|card_model| {
+                (
+                    card_model.common_card_info.code.clone(),
+                    Arc::new(card_model),
+                )
+            })
             .collect();
 
         Ok(card_pool)

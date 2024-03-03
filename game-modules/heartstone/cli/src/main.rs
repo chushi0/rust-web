@@ -1,6 +1,6 @@
 use clap::Parser;
 use dialoguer::Input;
-use heartstone::model::{Camp, CardModel};
+use heartstone::model::{Camp, CardInfo};
 use idl_gen::bss_heartstone::{
     BuffEvent, Card, DamageEvent, DrawCardEvent, MinionAttackEvent, MinionEffectEvent,
     MinionEnterEvent, MinionRemoveEvent, NewTurnEvent, PlayerEndTurnAction, PlayerManaChange,
@@ -55,7 +55,7 @@ enum Args {
 
 #[derive(Debug, Default)]
 pub struct StdInAndOut {
-    cards: HashMap<String, Arc<CardModel>>,
+    cards: HashMap<String, Arc<CardInfo>>,
 }
 
 lazy_static::lazy_static! {
@@ -104,9 +104,10 @@ pub trait Client {
 }
 
 impl StdInAndOut {
-    pub fn cache_cards(&mut self, cards: &[Arc<CardModel>]) {
+    pub fn cache_cards(&mut self, cards: &[Arc<CardInfo>]) {
         for card in cards {
-            self.cards.insert(card.card.code.clone(), card.clone());
+            self.cards
+                .insert(card.common_card_info.code.clone(), card.clone());
         }
     }
 
@@ -378,7 +379,7 @@ impl StdInAndOut {
     fn get_card_info(&self, card: &Card) -> String {
         self.cards
             .get(&card.card_code)
-            .map(|model| model.card.name.to_string())
+            .map(|model| model.common_card_info.name.to_string())
             .unwrap_or("<Unknown>".to_string())
     }
 

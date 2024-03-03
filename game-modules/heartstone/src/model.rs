@@ -1,9 +1,179 @@
 use datastructure::macros::TwoValue;
 use datastructure::{SyncHandle, TwoValueEnum};
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use web_db::hearthstone::{CardType, SpecialCardInfo};
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum CardType {
+    Minion = 1,
+    Spell = 2,
+}
+
+impl TryFrom<i32> for CardType {
+    type Error = anyhow::Error;
+
+    fn try_from(value: i32) -> std::result::Result<Self, Self::Error> {
+        match value {
+            1 => Ok(Self::Minion),
+            2 => Ok(Self::Spell),
+
+            _ => Err(anyhow::anyhow!("unknown enum value ({value})")),
+        }
+    }
+}
+
+impl From<CardType> for i32 {
+    fn from(value: CardType) -> Self {
+        match value {
+            CardType::Minion => 1,
+            CardType::Spell => 2,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CardInfo {
+    #[serde(flatten)]
+    pub common_card_info: CommonCardInfo,
+    #[serde(flatten)]
+    pub special_card_info: SpecialCardInfo,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommonCardInfo {
+    pub code: String,
+    pub name: String,
+    pub card_type: CardType,
+    pub mana_cost: i32,
+    pub description: String,
+    pub derive: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SpecialCardInfo {
+    Minion(MinionCardInfo),
+    Spell(SpellCardInfo),
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MinionCardInfo {
+    pub attack: i32,
+    pub health: i32,
+    pub effects: Vec<MinionEffect>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct SpellCardInfo {
+    pub effects: Vec<SpellEffect>,
+}
+
+pub type CardEffects = Vec<CardEffect>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum MinionEffect {
+    // 战吼
+    Battlecry {
+        effects: CardEffects,
+    },
+    // 亡语
+    Deathrattle {
+        effects: CardEffects,
+    },
+    // 狂战（同时攻击目标随从和相邻随从）
+    Berserk,
+    // 法术伤害+X
+    SpellDamage {
+        target: CardInfoTarget,
+        ampilfy: i32,
+    },
+    // 切换前后排
+    SwapFrontBackHook {
+        apply_when_team_swap: bool,
+        apply_when_opposite_swap: bool,
+        effects: CardEffects,
+    },
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum SpellEffect {
+    // 正常使用
+    Normal { effects: CardEffects },
+    // 前置
+    FrontUse { effects: CardEffects },
+    // 后置
+    BackUse { effects: CardEffects },
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub enum CardInfoTarget {
+    SelfMinion,
+    SelfHero,
+    SelectTargetMinion,
+    SelectTargetHero,
+    SelectTargetEntity,
+    OppositeAllMinion,
+    OppositeFrontHero,
+    OppositeBackHero,
+    OppositeAllHero,
+    OppositeAllEntity,
+    TeamAllMinion,
+    TeamFrontHero,
+    TeamBackHero,
+    TeamAllHero,
+    TeamAllEntity,
+    AllMinion,
+    AllFrontHero,
+    AllBackHero,
+    AllHero,
+    AllEntity,
+    JustSummon,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum CardEffect {
+    // 造成伤害
+    DealDamage {
+        target: CardInfoTarget,
+        damage: i64,
+    },
+    // 抽牌
+    DrawCard {
+        target: CardInfoTarget,
+        count: u32,
+    },
+    // 获得buff
+    Buff {
+        target: CardInfoTarget,
+        buff_type: i32,
+        atk_boost: i32,
+        hp_boost: i32,
+    },
+    // 召唤随从
+    SummonMinion {
+        target: CardInfoTarget,
+        minion_code: String,
+        summon_side: Side,
+    },
+    // 切换前后排
+    SwapFrontBack {
+        target: CardInfoTarget,
+    },
+    // 恢复生命值
+    RecoverHealth {
+        target: CardInfoTarget,
+        hp: i64,
+    },
+    // 取消通常法术效果
+    PreventNormalEffect,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum Side {
+    Left,
+    Right,
+}
 
 #[derive(Debug)]
 pub(crate) struct UuidGenerator(u64);
@@ -19,22 +189,6 @@ impl UuidGenerator {
         let val = self.0;
         self.0 += 1;
         val
-    }
-}
-
-/// 数据库中定义的卡牌模型
-#[derive(Debug)]
-pub struct CardModel {
-    pub card: web_db::hearthstone::Card,
-    pub card_info: web_db::hearthstone::CardInfo,
-}
-
-impl CardModel {
-    pub fn card_type(&self) -> CardType {
-        self.card
-            .card_type
-            .try_into()
-            .expect("card type is not valid")
     }
 }
 
@@ -219,7 +373,7 @@ pub trait Buffable {
 /// 随从
 #[derive(Debug, Clone)]
 pub struct Minion {
-    model: Arc<CardModel>,
+    model: Arc<CardInfo>,
     uuid: u64,
     atk: i32,
     hp: i64,
@@ -230,8 +384,8 @@ pub struct Minion {
 }
 
 impl Minion {
-    pub fn new(model: Arc<CardModel>, uuid: u64) -> SyncHandle<Minion> {
-        let SpecialCardInfo::Minion(info) = &model.card_info.special_card_info else {
+    pub fn new(model: Arc<CardInfo>, uuid: u64) -> SyncHandle<Minion> {
+        let SpecialCardInfo::Minion(info) = &model.special_card_info else {
             panic!("card_info is not minion info")
         };
 
@@ -248,7 +402,7 @@ impl Minion {
         SyncHandle::new(minion)
     }
 
-    pub fn model(&self) -> Arc<CardModel> {
+    pub fn model(&self) -> Arc<CardInfo> {
         self.model.clone()
     }
 
@@ -267,7 +421,7 @@ impl Minion {
 
 #[async_trait::async_trait]
 pub trait MinionTrait {
-    async fn model(&self) -> Arc<CardModel>;
+    async fn model(&self) -> Arc<CardInfo>;
 
     async fn atk(&self) -> i32;
 
@@ -276,7 +430,7 @@ pub trait MinionTrait {
 
 #[async_trait::async_trait]
 impl MinionTrait for SyncHandle<Minion> {
-    async fn model(&self) -> Arc<CardModel> {
+    async fn model(&self) -> Arc<CardInfo> {
         self.get().await.model.clone()
     }
 
@@ -348,19 +502,19 @@ impl Buffable for SyncHandle<Minion> {
 /// （手牌、牌库中的）卡牌
 #[derive(Debug, Clone)]
 pub struct Card {
-    model: Arc<CardModel>,
+    model: Arc<CardInfo>,
 }
 
 impl Card {
-    pub fn new(model: Arc<CardModel>) -> SyncHandle<Card> {
+    pub fn new(model: Arc<CardInfo>) -> SyncHandle<Card> {
         SyncHandle::new(Self::new_raw(model))
     }
 
-    pub fn new_raw(model: Arc<CardModel>) -> Card {
+    pub fn new_raw(model: Arc<CardInfo>) -> Card {
         Card { model }
     }
 
-    pub fn model(&self) -> Arc<CardModel> {
+    pub fn model(&self) -> Arc<CardInfo> {
         self.model.clone()
     }
 }
@@ -368,7 +522,7 @@ impl Card {
 /// 对局中使用的所有牌定义
 ///
 /// key: card_id, value: card_model
-pub type CardPool = HashMap<i64, Arc<CardModel>>;
+pub type CardPool = HashMap<String, Arc<CardInfo>>;
 
 /// 牌库
 #[derive(Debug)]
@@ -403,7 +557,7 @@ impl DeckTrait for SyncHandle<Deck> {
 impl Deck {
     pub fn new<Rng: rand::Rng>(
         card_pool: &CardPool,
-        init_cards: HashMap<i64, u32>,
+        init_cards: HashMap<String, u32>,
         rng: &mut Rng,
     ) -> SyncHandle<Deck> {
         let mut cards = Vec::new();
