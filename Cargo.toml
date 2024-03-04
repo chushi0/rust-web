@@ -30,4 +30,4 @@ debug-assertions = false
 incremental = false
 opt-level = 'z'
 overflow-checks = true
-strip = "debuginfo"
+strip = "symbols"
