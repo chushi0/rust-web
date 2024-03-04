@@ -12,6 +12,8 @@ enum Route {
     Home,
     #[at("/game/number-tower")]
     GameNumberTower,
+    #[at("/game/heartstone-2v2")]
+    Heartstone2V2,
     #[at("/dev-tools")]
     DevTools,
     #[at("/totp")]
@@ -26,6 +28,7 @@ fn switch(routes: Route) -> Html {
         Route::Home => html! { <HomePage /> },
         Route::NotFound => html! { <NotFoundPage /> },
         Route::GameNumberTower => html! { <GameNumberTowerPage/> },
+        Route::Heartstone2V2 => html! { <Heartstone2V2Page /> },
         Route::DevTools => html! { <DevToolsPage /> },
         Route::Totp => html! { <TotpPage /> },
     }
