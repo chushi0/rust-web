@@ -15,6 +15,11 @@ impl Component for Heartstone2V2Page {
 
     fn create(_ctx: &Context<Self>) -> Self {
         log::info!("block_on: {}", rt::block_on(async { "succ" }));
+        log::info!(
+            "block on one step: {:?}",
+            rt::block_on(rt::OneStep::with_task(async { "succ" }))
+        );
+
         Self {
             console_buffer: Vec::new(),
         }
