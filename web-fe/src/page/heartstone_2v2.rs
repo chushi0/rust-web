@@ -1,4 +1,4 @@
-use crate::component::*;
+use crate::{component::*, rt};
 use yew::prelude::*;
 
 pub struct Heartstone2V2Page {
@@ -14,6 +14,7 @@ impl Component for Heartstone2V2Page {
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
+        log::info!("block_on: {}", rt::block_on(async { "succ" }));
         Self {
             console_buffer: Vec::new(),
         }

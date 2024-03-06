@@ -1,6 +1,7 @@
 pub(crate) mod component;
 pub(crate) mod model;
 pub(crate) mod page;
+pub(crate) mod rt;
 
 use crate::page::*;
 use yew::prelude::*;
