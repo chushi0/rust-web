@@ -180,7 +180,7 @@ async fn fetch_and_notify(client: &Client, bangumi_watch: &BangumiWatch) -> Resu
         params.insert("cover".to_string(), cover_key);
         params.insert("url".to_string(), preview_url);
         feishu_api::sdk::send_card_message_to_hook(
-            env!("RUST_WEB_CRONJOB_BANGUMI_CHAT_HOOK"),
+            &std::env::var("RUST_WEB_CRONJOB_BANGUMI_CHAT_HOOK").unwrap(),
             include_str!("../../config/bangumi_card_template.json"),
             params,
         )

@@ -34,7 +34,7 @@ pub struct Transaction<'a> {
 
 pub async fn create_connection(rds: RDS) -> Result<SqliteConnection> {
     let db = rds_name(rds);
-    let path = format!("{}/{db}.db", env!("RUST_WEB_DB_PATH"));
+    let path = format!("{}/{db}.db", std::env::var("RUST_WEB_DB_PATH").unwrap());
 
     Ok(SqliteConnection::connect(&format!("sqlite://{path}")).await?)
 }

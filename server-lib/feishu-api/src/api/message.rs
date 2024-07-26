@@ -15,8 +15,8 @@ pub enum ReceiveIdType {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct SendMessageRequest {
-    pub receive_id: String,
+pub struct SendMessageRequest<'a> {
+    pub receive_id: &'a str,
     pub msg_type: String,
     pub content: String,
     pub uuid: Option<String>,
@@ -60,7 +60,7 @@ impl From<ReceiveIdType> for &'static str {
 
 pub async fn send_message(
     receive_id_type: ReceiveIdType,
-    req: SendMessageRequest,
+    req: SendMessageRequest<'_>,
 ) -> Result<SendMessageResponse> {
     send_message_internal(super::FEISHU_HOST, receive_id_type, req).await
 }
@@ -68,7 +68,7 @@ pub async fn send_message(
 async fn send_message_internal(
     host: &str,
     receive_id_type: ReceiveIdType,
-    req: SendMessageRequest,
+    req: SendMessageRequest<'_>,
 ) -> Result<SendMessageResponse> {
     let url = format!(
         "{}/open-apis/im/v1/messages?receive_id_type={}",
@@ -168,7 +168,7 @@ pub async fn upload_image(image: Vec<u8>) -> Result<UploadImageResponse> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::api::USER_ID;
+    use crate::api::get_user_id;
     use crate::install_test_key;
     use mockito::Matcher;
     use serde_json::json;
@@ -182,7 +182,7 @@ mod test {
             install_test_key(mock_token).await;
 
             let expect_body = Matcher::Json(json!({
-                "receive_id": USER_ID,
+                "receive_id": get_user_id(),
                 "msg_type": "text",
                 "content": "{\"text\":\"test content\"}",
                 "uuid": null,
@@ -242,7 +242,7 @@ mod test {
                 &server.url(),
                 ReceiveIdType::OpenId,
                 SendMessageRequest {
-                    receive_id: USER_ID.to_string(),
+                    receive_id: get_user_id(),
                     msg_type: "text".to_string(),
                     content: "{\"text\":\"test content\"}".to_string(),
                     uuid: None,

@@ -30,7 +30,7 @@ pub async fn send_plain_message(content: &str) -> Result<()> {
     api::message::send_message(
         api::message::ReceiveIdType::OpenId,
         SendMessageRequest {
-            receive_id: api::USER_ID.to_string(),
+            receive_id: api::get_user_id(),
             msg_type: "text".to_string(),
             content,
             uuid: None,
@@ -57,7 +57,7 @@ pub async fn send_card_message(
     api::message::send_message(
         api::message::ReceiveIdType::OpenId,
         SendMessageRequest {
-            receive_id: api::USER_ID.to_string(),
+            receive_id: api::get_user_id(),
             msg_type: "interactive".to_string(),
             content,
             uuid: None,
@@ -84,7 +84,7 @@ pub async fn send_card_message_to_chat(
     api::message::send_message(
         api::message::ReceiveIdType::ChatId,
         SendMessageRequest {
-            receive_id: chat_id.to_string(),
+            receive_id: chat_id,
             msg_type: "interactive".to_string(),
             content,
             uuid: None,

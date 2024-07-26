@@ -5,10 +5,10 @@ use std::ops::Add;
 use std::time::{Duration, SystemTime};
 
 pub fn get_download_url(path: &str, expire_at: u64) -> String {
-    let bucket_host = env!("RUST_WEB_ALIYUN_BUCKET_HOST");
-    let access_key_id = env!("RUST_WEB_ALIYUN_ACCESS_KEY_ID");
-    let bucket_name = env!("RUST_WEB_ALIYUN_BUCKET_NAME");
-    let access_key_secret = env!("RUST_WEB_ALIYUN_ACCESS_KEY_SECRET");
+    let bucket_host = std::env::var("RUST_WEB_ALIYUN_BUCKET_HOST").unwrap();
+    let access_key_id = std::env::var("RUST_WEB_ALIYUN_ACCESS_KEY_ID").unwrap();
+    let bucket_name = std::env::var("RUST_WEB_ALIYUN_BUCKET_NAME").unwrap();
+    let access_key_secret = std::env::var("RUST_WEB_ALIYUN_ACCESS_KEY_SECRET").unwrap();
     let plain_message = format!("GET\n\n\n{}\n/{}/{}", expire_at, bucket_name, path);
 
     let signature = hmac_sha1::hmac_sha1(access_key_secret.as_bytes(), plain_message.as_bytes());
@@ -22,10 +22,10 @@ pub fn get_download_url(path: &str, expire_at: u64) -> String {
 }
 
 pub async fn upload_file(path: &str, file: Vec<u8>, mimetype: &str) -> Result<()> {
-    let bucket_host = env!("RUST_WEB_ALIYUN_BUCKET_HOST");
-    let access_key_id = env!("RUST_WEB_ALIYUN_ACCESS_KEY_ID");
-    let bucket_name = env!("RUST_WEB_ALIYUN_BUCKET_NAME");
-    let access_key_secret = env!("RUST_WEB_ALIYUN_ACCESS_KEY_SECRET");
+    let bucket_host = std::env::var("RUST_WEB_ALIYUN_BUCKET_HOST").unwrap();
+    let access_key_id = std::env::var("RUST_WEB_ALIYUN_ACCESS_KEY_ID").unwrap();
+    let bucket_name = std::env::var("RUST_WEB_ALIYUN_BUCKET_NAME").unwrap();
+    let access_key_secret = std::env::var("RUST_WEB_ALIYUN_ACCESS_KEY_SECRET").unwrap();
 
     let expire_at = SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?

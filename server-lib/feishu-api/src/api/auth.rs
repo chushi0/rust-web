@@ -1,10 +1,11 @@
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
+use std::sync::OnceLock;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct GetTenantAccessTokenRequest {
-    pub app_id: String,
-    pub app_secret: String,
+    pub app_id: &'static str,
+    pub app_secret: &'static str,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,8 +22,16 @@ pub struct TenantAccessToken {
     pub expire: u64,
 }
 
-const APP_ID: &str = env!("RUST_WEB_FEISHU_APP_ID");
-const APP_SECRET: &str = env!("RUST_WEB_FEISHU_APP_SECRET");
+static APP_ID: OnceLock<&'static str> = OnceLock::new();
+static APP_SECRET: OnceLock<&'static str> = OnceLock::new();
+
+pub(crate) fn get_app_id() -> &'static str {
+    APP_ID.get_or_init(|| std::env::var("RUST_WEB_FEISHU_APP_ID").unwrap().leak())
+}
+
+pub(crate) fn get_app_secret() -> &'static str {
+    APP_SECRET.get_or_init(|| std::env::var("RUST_WEB_FEISHU_APP_SECRET").unwrap().leak())
+}
 
 pub async fn get_tenant_access_token() -> Result<TenantAccessToken> {
     get_tenant_access_token_internal(super::FEISHU_HOST).await
@@ -40,8 +49,8 @@ async fn get_tenant_access_token_internal(host: &str) -> Result<TenantAccessToke
         .post(url)
         .header("Content-Type", "application/json")
         .body(serde_json::to_vec(&GetTenantAccessTokenRequest {
-            app_id: APP_ID.to_string(),
-            app_secret: APP_SECRET.to_string(),
+            app_id: get_app_id(),
+            app_secret: get_app_secret(),
         })?)
         .send()
         .await?
@@ -70,8 +79,8 @@ mod test {
 
         tokio_test::block_on(async {
             let expect_body = Matcher::Json(json!({
-                "app_id": APP_ID,
-                "app_secret": APP_SECRET
+                "app_id": get_app_id(),
+                "app_secret": get_app_secret()
             }));
 
             let expect_token = "t-caecc734c2e3328a62489fe0648c4b98779515d3";
