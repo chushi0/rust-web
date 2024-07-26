@@ -11,9 +11,15 @@ pub async fn handle(req: Request<JoinRoomRequest>) -> Result<Response<JoinRoomRe
     check_request(req)?;
 
     let result = match req.strategy {
-        JoinRoomStrategy::Create => create_room(req).await,
-        JoinRoomStrategy::Join => join_room(req).await,
-        JoinRoomStrategy::Mate => mate_room(req).await,
+        JoinRoomStrategy::CREATE => create_room(req).await,
+        JoinRoomStrategy::JOIN => join_room(req).await,
+        JoinRoomStrategy::MATE => mate_room(req).await,
+        _ => {
+            return Err(Status::invalid_argument(format!(
+                "not supported strategy: {}",
+                req.strategy.inner()
+            )))
+        }
     }?;
 
     #[cfg(debug_assertions)]
@@ -30,7 +36,9 @@ fn check_request(req: &JoinRoomRequest) -> Result<(), Status> {
 }
 
 async fn create_room(req: &JoinRoomRequest) -> Result<JoinRoomResponse, Status> {
-    let room = room::create_room(req.game_type).await;
+    let room = room::create_room(req.game_type)
+        .await
+        .ok_or(Status::internal("create room failed"))?;
 
     room::join_room(room.clone(), req.user_id, clone_extra_data(&req.extra_data)).await?;
 

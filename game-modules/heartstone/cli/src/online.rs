@@ -209,7 +209,7 @@ impl Client {
                 self.send_message(
                     stream,
                     CreateRoomRequest {
-                        game_type: GameType::Hearthstone as i32,
+                        game_type: GameType::HEARTHSTONE.inner(),
                         init_public: false,
                         game_version: 1,
                         extra_data: Some(extra_data),
@@ -222,7 +222,7 @@ impl Client {
                 self.send_message(
                     stream,
                     MateRoomRequest {
-                        game_type: GameType::Hearthstone as i32,
+                        game_type: GameType::HEARTHSTONE.inner(),
                         game_version: 1,
                         extra_data: Some(extra_data),
                         ..Default::default()
@@ -234,7 +234,7 @@ impl Client {
                 self.send_message(
                     stream,
                     JoinRoomRequest {
-                        game_type: GameType::Hearthstone as i32,
+                        game_type: GameType::HEARTHSTONE.inner(),
                         room_id,
                         game_version: 1,
                         extra_data: Some(extra_data),

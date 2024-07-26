@@ -184,9 +184,9 @@ impl Damageable for SyncHandle<Hero> {
 
 #[derive(Debug, Clone)]
 pub struct Buff {
-    buff_type: i32,
-    atk_boost: i32,
-    hp_boost: i32,
+    pub buff_type: i32,
+    pub atk_boost: i32,
+    pub hp_boost: i32,
 }
 impl Buff {
     pub fn new(buff_type: i32, atk_boost: i32, hp_boost: i32) -> Self {
@@ -348,7 +348,7 @@ impl Buffable for SyncHandle<Minion> {
 /// （手牌、牌库中的）卡牌
 #[derive(Debug, Clone)]
 pub struct Card {
-    model: Arc<CardModel>,
+    pub model: Arc<CardModel>,
 }
 
 impl Card {

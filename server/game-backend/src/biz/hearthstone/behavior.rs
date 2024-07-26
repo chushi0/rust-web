@@ -76,7 +76,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
 
             let req = SendGameEventRequest {
                 user_id: vec![player.custom_id()],
-                game_type: GameType::Hearthstone as i32,
+                game_type: GameType::HEARTHSTONE.inner(),
                 room_id,
                 event_list: vec![GameEvent {
                     event_type: MyTurnStartEvent::NAME.into(),
@@ -173,7 +173,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
 
             let req = SendGameEventRequest {
                 user_id: vec![player.custom_id()],
-                game_type: GameType::Hearthstone as i32,
+                game_type: GameType::HEARTHSTONE.inner(),
                 room_id,
                 event_list: vec![GameEvent {
                     event_type: MyTurnStartEvent::NAME.into(),
@@ -197,7 +197,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
 
             let req = SendGameEventRequest {
                 user_id: vec![player.custom_id()],
-                game_type: GameType::Hearthstone as i32,
+                game_type: GameType::HEARTHSTONE.inner(),
                 room_id,
                 event_list: vec![GameEvent {
                     event_type: MyTurnEndEvent::NAME.into(),

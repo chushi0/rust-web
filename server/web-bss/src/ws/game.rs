@@ -159,16 +159,8 @@ impl GameBiz {
 
         let rpc_req = game_backend::JoinRoomRequest {
             user_id: user.rowid,
-            game_type: match game_backend::GameType::try_from(req.game_type) {
-                Ok(v) => v,
-                Err(_) => {
-                    let mut resp = JoinRoomResponse::new();
-                    resp.code = 1002;
-                    resp.message = "game not supported".to_string();
-                    return Ok(resp);
-                }
-            },
-            strategy: game_backend::JoinRoomStrategy::Create,
+            game_type: req.game_type.into(),
+            strategy: game_backend::JoinRoomStrategy::CREATE,
             public: Some(req.init_public),
             extra_data: clone_extra_data(req.extra_data),
             ..Default::default()
@@ -215,16 +207,8 @@ impl GameBiz {
 
         let rpc_req = game_backend::JoinRoomRequest {
             user_id: user.rowid,
-            game_type: match game_backend::GameType::try_from(req.game_type) {
-                Ok(v) => v,
-                Err(_) => {
-                    let mut resp = JoinRoomResponse::new();
-                    resp.code = 1002;
-                    resp.message = "game not supported".to_string();
-                    return Ok(resp);
-                }
-            },
-            strategy: game_backend::JoinRoomStrategy::Join,
+            game_type: req.game_type.into(),
+            strategy: game_backend::JoinRoomStrategy::JOIN,
             room_id: Some(req.room_id),
             extra_data: clone_extra_data(req.extra_data),
             ..Default::default()
@@ -271,16 +255,8 @@ impl GameBiz {
 
         let rpc_req = game_backend::JoinRoomRequest {
             user_id: user.rowid,
-            game_type: match game_backend::GameType::try_from(req.game_type) {
-                Ok(v) => v,
-                Err(_) => {
-                    let mut resp = JoinRoomResponse::new();
-                    resp.code = 1002;
-                    resp.message = "game not supported".to_string();
-                    return Ok(resp);
-                }
-            },
-            strategy: game_backend::JoinRoomStrategy::Mate,
+            game_type: req.game_type.into(),
+            strategy: game_backend::JoinRoomStrategy::MATE,
             extra_data: clone_extra_data(req.extra_data),
             ..Default::default()
         };
@@ -327,7 +303,7 @@ impl GameBiz {
         };
 
         let user_id = room.user_id;
-        let game_type = game_backend::GameType::try_from(room.game_type)?;
+        let game_type = room.game_type.into();
         let room_id = room.room_id;
 
         if let Some(ready) = req.ready {
@@ -371,7 +347,7 @@ impl GameBiz {
         };
 
         let user_id = room.user_id;
-        let game_type = game_backend::GameType::try_from(room.game_type)?;
+        let game_type = room.game_type.into();
         let room_id = room.room_id;
 
         let req = game_backend::SubmitPlayerActionRequest {
@@ -389,7 +365,7 @@ impl GameBiz {
     async fn try_remove_from_room(room: &RoomKey) -> Result<()> {
         let req = game_backend::LeaveRoomRequest {
             user_id: room.user_id,
-            game_type: game_backend::GameType::try_from(room.game_type)?,
+            game_type: room.game_type.into(),
             room_id: room.room_id,
         };
         rpc::game::client().leave_room(req).await?;
