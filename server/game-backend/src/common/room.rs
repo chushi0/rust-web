@@ -87,10 +87,11 @@ pub enum RoomError {
     RoomFull,
     RoomHasBeenJoin,
     PlayerNotInRoom,
+    CreateRoomFail,
     InternalError,
 }
 
-pub async fn create_room(game_type: GameType) -> SafeRoom {
+pub async fn create_room(game_type: GameType) -> Option<SafeRoom> {
     info!("start to create room...");
     let range = Uniform::new(MIN_ROOM_ID, MAX_ROOM_ID);
 
@@ -117,7 +118,7 @@ pub async fn create_room(game_type: GameType) -> SafeRoom {
         public: false,
         join_players: vec![],
         player_lock: false,
-        biz_room: Arc::new(create_biz_room(game_type)),
+        biz_room: Arc::new(create_biz_room(game_type)?),
         rng: room_rng,
     };
 
@@ -125,7 +126,7 @@ pub async fn create_room(game_type: GameType) -> SafeRoom {
     rooms.insert(room_key, room.clone());
     info!("room created: {room_key:?}");
 
-    room
+    Some(room)
 }
 
 pub async fn get_room(game_type: GameType, room_id: i32) -> Option<SafeRoom> {
@@ -168,7 +169,9 @@ pub async fn mate_room(
         }
     }
 
-    let safe_room = create_room(game_type).await;
+    let safe_room = create_room(game_type)
+        .await
+        .ok_or(RoomError::CreateRoomFail)?;
     let room = safe_room.clone();
     let mut room = room.lock().await;
     room.public = true;
@@ -201,7 +204,7 @@ pub async fn room_chat(
 ) -> Result<(), RoomError> {
     let room = safe_room.lock().await;
     let room_id = room.room_key.room_id;
-    let game_type = room.room_key.game_type as i32;
+    let game_type = room.room_key.game_type.inner();
     let players = room.players();
 
     let sender_user_index = players
@@ -233,10 +236,11 @@ pub async fn room_chat(
     Ok(())
 }
 
-fn create_biz_room(game_type: GameType) -> Box<dyn BizRoom> {
+fn create_biz_room(game_type: GameType) -> Option<Box<dyn BizRoom>> {
     match game_type {
-        GameType::Furuyoni => unimplemented!(),
-        GameType::Hearthstone => Box::new(crate::biz::hearthstone::room::Room::new()),
+        GameType::FURUYONI => unimplemented!(),
+        GameType::HEARTHSTONE => Some(Box::new(crate::biz::hearthstone::room::Room::new())),
+        _ => None,
     }
 }
 
@@ -386,7 +390,7 @@ impl Room {
 
         let request = SendRoomCommonChangeRequest {
             user_ids,
-            game_type: self.room_key.game_type as i32,
+            game_type: self.room_key.game_type.inner(),
             room_id: self.room_key.room_id,
             room_players,
             public: self.public,
@@ -521,6 +525,7 @@ impl From<RoomError> for Status {
             RoomError::RoomFull => Code::FailedPrecondition,
             RoomError::RoomHasBeenJoin => Code::AlreadyExists,
             RoomError::PlayerNotInRoom => Code::NotFound,
+            RoomError::CreateRoomFail => Code::Internal,
             RoomError::InternalError => Code::Internal,
         };
         let msg = format!("{value:?}");

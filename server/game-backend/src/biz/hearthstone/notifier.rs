@@ -193,7 +193,7 @@ impl NotifierInternal {
 
                     let req = SendGameEventRequest {
                         user_id: vec![player.user_id.expect("we should get user_id now")],
-                        game_type: GameType::Hearthstone as i32,
+                        game_type: GameType::HEARTHSTONE.inner(),
                         room_id,
                         event_list: events,
                     };
@@ -250,7 +250,7 @@ impl NotifierInternal {
 
                     let req = SendGameEventRequest {
                         user_id: vec![id],
-                        game_type: GameType::Hearthstone as i32,
+                        game_type: GameType::HEARTHSTONE.inner(),
                         room_id,
                         event_list: events,
                     };

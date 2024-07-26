@@ -25,8 +25,6 @@ pub enum EventType {
 
 #[derive(Debug, Default)]
 pub struct PerformResult {
-    // 效果是否存在
-    pub effect_exist: bool,
     // 需要死亡检查
     pub need_death_check: bool,
     // 取消通常法术效果
@@ -90,7 +88,6 @@ pub async fn interpreter(
     };
 
     let mut result = PerformResult {
-        effect_exist: true,
         ..Default::default()
     };
     let mut just_summon = Vec::new();

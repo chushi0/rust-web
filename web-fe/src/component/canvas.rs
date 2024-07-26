@@ -27,15 +27,15 @@ pub struct CanvasContext {
     pub context: js_sys::Object,
     pub width: usize,
     pub height: usize,
-    pub delay: f64,
+    // pub delay: f64,
 }
 
 pub struct CanvasMouseEvent {
     pub canvas_handler: CanvasHandler,
     pub x: f64,
     pub y: f64,
-    pub width: usize,
-    pub height: usize,
+    // pub width: usize,
+    // pub height: usize,
 }
 
 #[derive(Clone)]
@@ -98,8 +98,8 @@ impl Component for Canvas {
                     canvas_handler: CanvasHandler { link: link.clone() },
                     x,
                     y,
-                    width,
-                    height,
+                    // width,
+                    // height,
                 })
             }))
         } else {
@@ -120,8 +120,8 @@ impl Component for Canvas {
                     canvas_handler: CanvasHandler { link: link.clone() },
                     x,
                     y,
-                    width,
-                    height,
+                    // width,
+                    // height,
                 })
             }))
         } else {
@@ -163,7 +163,7 @@ impl Canvas {
                 context: canvas_context,
                 width,
                 height,
-                delay: 0.0,
+                // delay: 0.0,
             });
         }
         if ctx.props().autorefresh {
@@ -185,9 +185,9 @@ impl Canvas {
                 .expect("should not null when get_context");
 
             let current_time = Instant::now();
-            let delay = current_time
-                .duration_since(self.last_refresh_time)
-                .as_secs_f64();
+            // let delay = current_time
+            //     .duration_since(self.last_refresh_time)
+            //     .as_secs_f64();
             self.last_refresh_time = current_time;
 
             onrender.emit(CanvasContext {
@@ -197,7 +197,7 @@ impl Canvas {
                 context: canvas_context,
                 width,
                 height,
-                delay,
+                // delay,
             });
         }
         if ctx.props().autorefresh {

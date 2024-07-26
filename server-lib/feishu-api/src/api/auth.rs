@@ -66,9 +66,9 @@ mod test {
 
     #[test]
     pub fn test_get_tenant_access_token_success() {
-        tokio_test::block_on(async {
-            let mut server = mockito::Server::new();
+        let mut server = mockito::Server::new();
 
+        tokio_test::block_on(async {
             let expect_body = Matcher::Json(json!({
                 "app_id": APP_ID,
                 "app_secret": APP_SECRET

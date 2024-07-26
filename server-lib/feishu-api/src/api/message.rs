@@ -175,11 +175,11 @@ mod test {
 
     #[test]
     pub fn test_send_message() {
+        let mut server = mockito::Server::new();
+
         tokio_test::block_on(async {
             let mock_token = "t-caecc734c2e3328a62489fe0648c4b98779515d3";
             install_test_key(mock_token).await;
-
-            let mut server = mockito::Server::new();
 
             let expect_body = Matcher::Json(json!({
                 "receive_id": USER_ID,
