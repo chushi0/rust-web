@@ -10,6 +10,6 @@ entries:
         - ../../idl
     - idl:
         source: local
-        path: ../../idl/bss_websocket.proto
+        path: ../../idl/bff_websocket.proto
         includes:
         - ../../idl

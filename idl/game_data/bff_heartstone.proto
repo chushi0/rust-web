@@ -1,5 +1,5 @@
 syntax = "proto3";
-package game.bss.hearthstone;
+package game.bff.hearthstone;
 
 // 位置
 enum Position {

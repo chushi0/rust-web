@@ -35,8 +35,8 @@ pub async fn handle() -> Result<()> {
             Err(err) => {
                 fetch_error = true;
                 log::error!(
-                    "fetch-bilibili-bangumi error: {err}, rowid={}, ssid={}",
-                    bangumi_watch.rowid,
+                    "fetch-bilibili-bangumi error: {err}, id={}, ssid={}",
+                    bangumi_watch.id,
                     bangumi_watch.ssid,
                 );
             }
@@ -58,7 +58,7 @@ pub async fn handle_all(ssid: i32) -> Result<()> {
     let bilibili_client = build_bilibili_client()?;
 
     let bangumi_watch = BangumiWatch {
-        rowid: 0,
+        id: 0,
         ssid,
         send_ep: 0,
         finish: false,

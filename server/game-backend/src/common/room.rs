@@ -1,8 +1,8 @@
 use crate::rpc;
 use async_trait::async_trait;
-use idl_gen::bss_websocket::SendRoomChatRequest;
-use idl_gen::bss_websocket::SendRoomCommonChangeRequest;
-use idl_gen::bss_websocket_client::BoxProtobufPayload;
+use idl_gen::bff_websocket::SendRoomChatRequest;
+use idl_gen::bff_websocket::SendRoomCommonChangeRequest;
+use idl_gen::bff_websocket_client::BoxProtobufPayload;
 use idl_gen::game_backend::GameType;
 use log::info;
 use log::warn;
@@ -228,7 +228,7 @@ pub async fn room_chat(
         content,
     };
 
-    rpc::bss::client().send_room_chat(req).await.map_err(|e| {
+    rpc::bff::client().send_room_chat(req).await.map_err(|e| {
         warn!("send room chat error: {e:?}");
         RoomError::InternalError
     })?;
@@ -359,12 +359,12 @@ impl Room {
         self.start_game_if_satisfy(safe_room).await;
     }
 
-    pub fn pack_room_players(&self) -> Vec<idl_gen::bss_websocket::RoomPlayer> {
+    pub fn pack_room_players(&self) -> Vec<idl_gen::bff_websocket::RoomPlayer> {
         let mut players = Vec::new();
         for i in 0..self.join_players.len() {
             let player = &self.join_players[i];
 
-            players.push(idl_gen::bss_websocket::RoomPlayer {
+            players.push(idl_gen::bff_websocket::RoomPlayer {
                 user_id: player.user_id,
                 index: i as i32,
                 ready: player.ready,
@@ -396,7 +396,7 @@ impl Room {
             public: self.public,
         };
 
-        let resp = rpc::bss::client().send_room_common_change(request).await;
+        let resp = rpc::bff::client().send_room_common_change(request).await;
         match resp {
             Ok(resp) => {
                 let failed_user_ids = &resp.get_ref().failed_user_ids;

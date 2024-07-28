@@ -1,5 +1,5 @@
 use core::time;
-use idl_gen::bss_websocket_client::BoxProtobufPayload;
+use idl_gen::bff_websocket_client::BoxProtobufPayload;
 use protobuf::Message;
 use std::{collections::HashMap, future::Future, marker::PhantomData};
 use tokio::sync::{

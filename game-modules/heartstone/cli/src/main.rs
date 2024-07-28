@@ -1,7 +1,7 @@
 use clap::Parser;
 use dialoguer::Input;
 use heartstone::model::{Camp, CardModel};
-use idl_gen::bss_heartstone::{
+use idl_gen::bff_heartstone::{
     BuffEvent, Card, DamageEvent, DrawCardEvent, MinionAttackEvent, MinionEffectEvent,
     MinionEnterEvent, MinionRemoveEvent, NewTurnEvent, PlayerEndTurnAction, PlayerManaChange,
     PlayerOperateMinionAction, PlayerTurnAction, PlayerTurnActionEnum, PlayerUseCardAction,
@@ -256,7 +256,7 @@ impl StdInAndOut {
 
     pub fn print_player_draw_card(&self, event: DrawCardEvent) {
         match event.draw_card_result.enum_value().unwrap() {
-            idl_gen::bss_heartstone::DrawCardResult::Ok => match event.card.0 {
+            idl_gen::bff_heartstone::DrawCardResult::Ok => match event.card.0 {
                 Some(card) => println!(
                     "玩家 [{}] 抽到了 {}",
                     event.player_uuid,
@@ -264,12 +264,12 @@ impl StdInAndOut {
                 ),
                 None => println!("玩家 [{}] 抽了 1 张牌", event.player_uuid),
             },
-            idl_gen::bss_heartstone::DrawCardResult::Fire => println!(
+            idl_gen::bff_heartstone::DrawCardResult::Fire => println!(
                 "玩家 [{}] 抽到了 {}，但因为手牌已满，这张牌爆掉了",
                 event.player_uuid,
                 self.get_card_info(event.card.as_ref().unwrap())
             ),
-            idl_gen::bss_heartstone::DrawCardResult::Tired => {
+            idl_gen::bff_heartstone::DrawCardResult::Tired => {
                 println!(
                     "玩家 [{}] 抽牌，但因为牌库已空，受到了 {} 点疲劳伤害",
                     event.player_uuid,
@@ -311,11 +311,11 @@ impl StdInAndOut {
 
     pub fn print_minion_effect(&self, event: MinionEffectEvent) {
         match event.minion_effect.enum_value().unwrap() {
-            idl_gen::bss_heartstone::MinionEffect::Other => unimplemented!(),
-            idl_gen::bss_heartstone::MinionEffect::Battlecry => {
+            idl_gen::bff_heartstone::MinionEffect::Other => unimplemented!(),
+            idl_gen::bff_heartstone::MinionEffect::Battlecry => {
                 println!("随从 [{}] 战吼效果发动", event.minion_id)
             }
-            idl_gen::bss_heartstone::MinionEffect::Deathrattle => {
+            idl_gen::bff_heartstone::MinionEffect::Deathrattle => {
                 println!("随从 [{}] 亡语效果发动", event.minion_id)
             }
         }

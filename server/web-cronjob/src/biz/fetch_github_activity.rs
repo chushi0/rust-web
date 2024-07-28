@@ -73,7 +73,7 @@ pub async fn handle() -> Result<()> {
             let raw_data = serde_json::to_string(event)?;
 
             let mut github_activity_event = GithubActivityEvent {
-                rowid: 0,
+                id: 0,
                 raw_data,
                 event_time,
                 create_time: now,
@@ -81,7 +81,7 @@ pub async fn handle() -> Result<()> {
             };
 
             let mut display_event = DisplayEvent {
-                rowid: 0,
+                id: 0,
                 title: event_title,
                 message: event_message,
                 link: format!("https://github.com/{}", event.repository.name),

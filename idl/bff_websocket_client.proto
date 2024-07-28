@@ -1,5 +1,5 @@
 syntax = "proto3";
-package bss;
+package bff;
 
 message BoxProtobufPayload {
   string name = 1;

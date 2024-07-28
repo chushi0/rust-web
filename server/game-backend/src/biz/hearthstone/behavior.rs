@@ -11,11 +11,11 @@ use heartstone::{
     player::{Player, PlayerBehavior, PlayerStartingAction, PlayerTurnAction},
 };
 use idl_gen::{
-    bss_heartstone::{
+    bff_heartstone::{
         MyTurnEndEvent, MyTurnStartEvent, PlayerEndTurnAction, PlayerTurnActionEnum, Position,
         StartingTurnAction, StartingTurnActionEnum, StartingTurnStartEvent,
     },
-    bss_websocket::{GameEvent, SendGameEventRequest},
+    bff_websocket::{GameEvent, SendGameEventRequest},
     game_backend::GameType,
 };
 use protobuf::{Message, MessageField};
@@ -84,7 +84,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
                 }],
             };
 
-            if let Err(err) = rpc::bss::client().send_game_event(req).await {
+            if let Err(err) = rpc::bff::client().send_game_event(req).await {
                 log::error!("send game event error: {err}");
             }
         }
@@ -181,7 +181,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
                 }],
             };
 
-            if let Err(err) = rpc::bss::client().send_game_event(req).await {
+            if let Err(err) = rpc::bff::client().send_game_event(req).await {
                 log::error!("send game event error: {err}");
             }
         };
@@ -205,12 +205,12 @@ impl PlayerBehavior for SocketPlayerBehavior {
                 }],
             };
 
-            if let Err(err) = rpc::bss::client().send_game_event(req).await {
+            if let Err(err) = rpc::bff::client().send_game_event(req).await {
                 log::error!("send game event error: {err}");
             }
         };
 
-        let default_value = || idl_gen::bss_heartstone::PlayerTurnAction {
+        let default_value = || idl_gen::bff_heartstone::PlayerTurnAction {
             action_type: PlayerTurnActionEnum::PlayerEndTurn.into(),
             player_end_turn: MessageField::some(PlayerEndTurnAction::default()),
             ..Default::default()
@@ -257,7 +257,7 @@ impl PlayerBehavior for SocketPlayerBehavior {
     }
 }
 
-fn parse_target(target: idl_gen::bss_heartstone::Target) -> Option<heartstone::model::Target> {
+fn parse_target(target: idl_gen::bff_heartstone::Target) -> Option<heartstone::model::Target> {
     match (target.minion_id, target.player) {
         (None, None) => None,
         (None, Some(id)) => Some(heartstone::model::Target::Hero(id)),

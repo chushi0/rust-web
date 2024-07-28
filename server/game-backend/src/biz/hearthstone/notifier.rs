@@ -12,11 +12,11 @@ use heartstone::{
     player::PlayerTrait,
 };
 use idl_gen::{
-    bss_heartstone::{
+    bff_heartstone::{
         GamePlayer, GameStartEvent, MinionStatus, PlayerStatus, Position, RandomGroupEvent,
         SyncGameStatus,
     },
-    bss_websocket::{GameEvent, SendGameEventRequest},
+    bff_websocket::{GameEvent, SendGameEventRequest},
     game_backend::GameType,
 };
 use protobuf::{EnumOrUnknown, Message, MessageField};
@@ -198,7 +198,7 @@ impl NotifierInternal {
                         event_list: events,
                     };
 
-                    if let Err(err) = rpc::bss::client().send_game_event(req).await {
+                    if let Err(err) = rpc::bff::client().send_game_event(req).await {
                         log::error!(
                             "send game event fail: uuid={}, id={}, err={err:?}",
                             player.uuid,
@@ -255,7 +255,7 @@ impl NotifierInternal {
                         event_list: events,
                     };
 
-                    if let Err(err) = rpc::bss::client().send_game_event(req).await {
+                    if let Err(err) = rpc::bff::client().send_game_event(req).await {
                         log::error!("send game event fail: uuid={uuid}, id={id}, err={err:?}");
                     }
                 }
@@ -301,7 +301,7 @@ enum StartingNotifyEvent {
 
 impl StartingNotifyEvent {
     fn to_user_event(&self, uuid: u64, players: Vec<&Player>) -> Result<Option<GameEvent>> {
-        use idl_gen::bss_heartstone::*;
+        use idl_gen::bff_heartstone::*;
 
         let is_same_camp = |player1, player2| {
             if player1 == player2 {
@@ -472,7 +472,7 @@ enum RunningNotifyEvent {
 
 impl RunningNotifyEvent {
     fn to_user_event(&self, uuid: u64) -> Result<GameEvent> {
-        use idl_gen::bss_heartstone::*;
+        use idl_gen::bff_heartstone::*;
 
         match self {
             RunningNotifyEvent::NewTurn { current_turn } => pack_game_event(match current_turn {
@@ -636,7 +636,7 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
                             .await
                             .into_iter()
                             .async_map(|card| async move {
-                                idl_gen::bss_heartstone::Card {
+                                idl_gen::bff_heartstone::Card {
                                     card_code: card.get().await.model().card.code.clone(),
                                     ..Default::default()
                                 }
@@ -672,7 +672,7 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
             .async_map(|(camp, minion)| async move {
                 MinionStatus {
                     uuid: minion.uuid().await,
-                    card: MessageField::some(idl_gen::bss_heartstone::Card {
+                    card: MessageField::some(idl_gen::bff_heartstone::Card {
                         card_code: minion.model().await.card.code.clone(),
                         ..Default::default()
                     }),
@@ -682,7 +682,7 @@ async fn pack_sync_game_status(game: &Game, uuid: u64) -> Result<GameEvent> {
                         .buff_list()
                         .await
                         .iter()
-                        .map(|buff| idl_gen::bss_heartstone::Buff {
+                        .map(|buff| idl_gen::bff_heartstone::Buff {
                             atk_boost: buff.atk_boost(),
                             hp_boost: buff.hp_boost(),
                             ..Default::default()
@@ -705,13 +705,13 @@ fn pack_game_event<Event: Message>(event: Event) -> Result<GameEvent> {
     })
 }
 
-fn pack_target(target: &heartstone::model::Target) -> idl_gen::bss_heartstone::Target {
+fn pack_target(target: &heartstone::model::Target) -> idl_gen::bff_heartstone::Target {
     match target {
-        heartstone::model::Target::Minion(id) => idl_gen::bss_heartstone::Target {
+        heartstone::model::Target::Minion(id) => idl_gen::bff_heartstone::Target {
             minion_id: Some(*id),
             ..Default::default()
         },
-        heartstone::model::Target::Hero(id) => idl_gen::bss_heartstone::Target {
+        heartstone::model::Target::Hero(id) => idl_gen::bff_heartstone::Target {
             player: Some(*id),
             ..Default::default()
         },

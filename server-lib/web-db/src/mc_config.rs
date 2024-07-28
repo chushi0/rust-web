@@ -1,10 +1,8 @@
 use anyhow::Result;
 use futures::TryStreamExt;
-use sqlx::Row;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Advancement {
-    pub rowid: i64,
     pub id: String,
     pub title: String,
     pub description: String,
@@ -15,7 +13,7 @@ pub struct Advancement {
 }
 
 pub async fn get_all_advancement(db: &mut super::Transaction<'_>) -> Result<Vec<Advancement>> {
-    let mut iter = sqlx::query_as("select rowid, * from advancement").fetch(&mut db.tx);
+    let mut iter = sqlx::query_as("select * from advancement").fetch(&mut db.tx);
     let mut res = Vec::new();
     while let Some(row) = iter.try_next().await? {
         res.push(row)
@@ -45,13 +43,6 @@ pub async fn insert_advancement(
     .bind(&advancement.requirements)
     .execute(&mut db.tx)
     .await?;
-
-    let id: i64 = sqlx::query("select last_insert_rowid()")
-        .fetch_one(&mut db.tx)
-        .await?
-        .get(0);
-
-    advancement.rowid = id;
 
     Ok(())
 }

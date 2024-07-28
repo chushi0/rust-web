@@ -8,7 +8,7 @@ use heartstone::{
     },
     player::{Player, PlayerBehavior, PlayerStartingAction, PlayerTrait, PlayerTurnAction},
 };
-use idl_gen::bss_heartstone::{
+use idl_gen::bff_heartstone::{
     BuffEvent, DamageEvent, DrawCardEvent, DrawCardResult, MinionAttackEvent, MinionEffect,
     MinionEffectEvent, MinionEnterEvent, MinionRemoveEvent, MinionStatus, NewTurnEvent,
     PlayerManaChange, PlayerStatus, PlayerTurnEvent, PlayerUseCardEndEvent, PlayerUseCardEvent,
@@ -72,7 +72,7 @@ async fn load_card_pool() -> HashMap<i64, Arc<CardModel>> {
     let mut map = HashMap::new();
     for card in cards {
         let card_info = serde_json::from_str(&card.card_info).unwrap();
-        map.insert(card.rowid, Arc::new(CardModel { card, card_info }));
+        map.insert(card.id, Arc::new(CardModel { card, card_info }));
     }
 
     crate::io().cache_cards(&map.values().map(Arc::clone).collect::<Vec<_>>());
@@ -134,7 +134,7 @@ impl GameRunningNotifier for StdNotifier {
                             .await
                             .into_iter()
                             .async_map(|card| async move {
-                                idl_gen::bss_heartstone::Card {
+                                idl_gen::bff_heartstone::Card {
                                     card_code: card.get().await.model().card.code.clone(),
                                     ..Default::default()
                                 }
@@ -169,7 +169,7 @@ impl GameRunningNotifier for StdNotifier {
                 .async_map(|(camp, minion)| async move {
                     MinionStatus {
                         uuid: minion.uuid().await,
-                        card: MessageField::some(idl_gen::bss_heartstone::Card {
+                        card: MessageField::some(idl_gen::bff_heartstone::Card {
                             card_code: minion.model().await.card.code.clone(),
                             ..Default::default()
                         }),
@@ -179,7 +179,7 @@ impl GameRunningNotifier for StdNotifier {
                             .buff_list()
                             .await
                             .iter()
-                            .map(|buff| idl_gen::bss_heartstone::Buff {
+                            .map(|buff| idl_gen::bff_heartstone::Buff {
                                 atk_boost: buff.atk_boost(),
                                 hp_boost: buff.hp_boost(),
                                 ..Default::default()
@@ -232,7 +232,7 @@ impl GameRunningNotifier for StdNotifier {
             PlayerDrawCard::Fire(card) => Some(card),
             PlayerDrawCard::Tired(_) => None,
         }
-        .map(|card| idl_gen::bss_heartstone::Card {
+        .map(|card| idl_gen::bff_heartstone::Card {
             card_code: card.model().card.code.clone(),
             ..Default::default()
         });
@@ -264,7 +264,7 @@ impl GameRunningNotifier for StdNotifier {
         let event = PlayerUseCardEvent {
             player_uuid: player,
             card_index: 0,
-            card: MessageField::some(idl_gen::bss_heartstone::Card {
+            card: MessageField::some(idl_gen::bff_heartstone::Card {
                 card_code: card.model().card.code.clone(),
                 ..Default::default()
             }),
@@ -296,7 +296,7 @@ impl GameRunningNotifier for StdNotifier {
     fn minion_summon(&self, minion: Minion, camp: Camp) {
         let event = MinionEnterEvent {
             minion_id: minion.uuid(),
-            card: MessageField::some(idl_gen::bss_heartstone::Card {
+            card: MessageField::some(idl_gen::bff_heartstone::Card {
                 card_code: minion.model().card.code.clone(),
                 ..Default::default()
             }),
@@ -362,7 +362,7 @@ impl GameRunningNotifier for StdNotifier {
     fn buff(&self, target: Target, buff: Buff) {
         let event = BuffEvent {
             target: MessageField::some(pack_target(target)),
-            buff: MessageField::some(idl_gen::bss_heartstone::Buff {
+            buff: MessageField::some(idl_gen::bff_heartstone::Buff {
                 atk_boost: buff.atk_boost(),
                 hp_boost: buff.hp_boost(),
                 ..Default::default()
@@ -390,17 +390,17 @@ impl PlayerBehavior for StdBehavior {
         let action = crate::io().next_action();
 
         match action.action_type.enum_value().unwrap() {
-            idl_gen::bss_heartstone::PlayerTurnActionEnum::PlayerEndTurn => {
+            idl_gen::bff_heartstone::PlayerTurnActionEnum::PlayerEndTurn => {
                 PlayerTurnAction::EndTurn
             }
-            idl_gen::bss_heartstone::PlayerTurnActionEnum::PlayerUseCard => {
+            idl_gen::bff_heartstone::PlayerTurnActionEnum::PlayerUseCard => {
                 let player_use_card = action.player_use_card.unwrap();
                 PlayerTurnAction::PlayCard {
                     hand_index: player_use_card.card_index as usize,
                     target: parse_target(player_use_card.target),
                 }
             }
-            idl_gen::bss_heartstone::PlayerTurnActionEnum::PlayerOperateMinion => {
+            idl_gen::bff_heartstone::PlayerTurnActionEnum::PlayerOperateMinion => {
                 let player_operate_minion = action.player_operate_minion.unwrap();
                 PlayerTurnAction::MinionAttack {
                     attacker: player_operate_minion.minion_id,
@@ -411,7 +411,7 @@ impl PlayerBehavior for StdBehavior {
     }
 }
 
-fn parse_target(target: MessageField<idl_gen::bss_heartstone::Target>) -> Option<Target> {
+fn parse_target(target: MessageField<idl_gen::bff_heartstone::Target>) -> Option<Target> {
     target
         .map(|target| match (target.minion_id, target.player) {
             (None, Some(player)) => Some(Target::Hero(player)),
@@ -421,13 +421,13 @@ fn parse_target(target: MessageField<idl_gen::bss_heartstone::Target>) -> Option
         .unwrap_or(None)
 }
 
-fn pack_target(target: heartstone::model::Target) -> idl_gen::bss_heartstone::Target {
+fn pack_target(target: heartstone::model::Target) -> idl_gen::bff_heartstone::Target {
     match target {
-        heartstone::model::Target::Minion(id) => idl_gen::bss_heartstone::Target {
+        heartstone::model::Target::Minion(id) => idl_gen::bff_heartstone::Target {
             minion_id: Some(id),
             ..Default::default()
         },
-        heartstone::model::Target::Hero(id) => idl_gen::bss_heartstone::Target {
+        heartstone::model::Target::Hero(id) => idl_gen::bff_heartstone::Target {
             player: Some(id),
             ..Default::default()
         },

@@ -1,5 +1,5 @@
 use anyhow::Result;
-use idl_gen::bss_websocket_client::BoxProtobufPayload;
+use idl_gen::bff_websocket_client::BoxProtobufPayload;
 use protobuf::Message;
 
 pub fn pack_message<T>(msg: T) -> Result<Vec<u8>>

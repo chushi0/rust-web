@@ -68,7 +68,6 @@ async fn collect_advancement(
         let mc_advancement: McAdvancement = serde_json::from_slice(data.as_slice())?;
 
         let mut advancement = Advancement {
-            rowid: 0,
             id: format!(
                 "minecraft:{}/{}",
                 namespace_entry.file_name().to_string_lossy(),

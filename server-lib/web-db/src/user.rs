@@ -3,7 +3,7 @@ use sqlx::Row;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct User {
-    pub rowid: i64,
+    pub id: i64,
     pub account: String,
     pub password: String,
     pub username: String,
@@ -33,12 +33,12 @@ pub async fn insert_user(db: &mut super::Transaction<'_>, user: &mut User) -> Re
         .execute(&mut db.tx)
         .await?;
 
-    let id: i64 = sqlx::query("select last_insert_rowid()")
+    let id: i64 = sqlx::query("select last_insert_id()")
         .fetch_one(&mut db.tx)
         .await?
         .get(0);
 
-    user.rowid = id;
+    user.id = id;
 
     Ok(())
 }
@@ -46,10 +46,10 @@ pub async fn insert_user(db: &mut super::Transaction<'_>, user: &mut User) -> Re
 pub async fn query_user(db: &mut super::Transaction<'_>, param: QueryUserParam) -> Result<User> {
     let event = match param {
         QueryUserParam::ByAccount { account } => {
-            sqlx::query_as("select rowid,* from user where account = ? limit 1").bind(account)
+            sqlx::query_as("select * from user where account = ? limit 1").bind(account)
         }
         QueryUserParam::ByUid { uid } => {
-            sqlx::query_as("select rowid,* from user where rowid = ? limit 1").bind(uid)
+            sqlx::query_as("select * from user where id = ? limit 1").bind(uid)
         }
     }
     .fetch_one(&mut db.tx)
@@ -58,14 +58,14 @@ pub async fn query_user(db: &mut super::Transaction<'_>, param: QueryUserParam) 
     Ok(event)
 }
 
-pub async fn update_user_login_time(db: &mut super::Transaction<'_>, rowid: i64) -> Result<()> {
+pub async fn update_user_login_time(db: &mut super::Transaction<'_>, id: i64) -> Result<()> {
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?
         .as_secs() as i64;
 
-    sqlx::query("update user set last_login_time = ? where rowid = ?")
+    sqlx::query("update user set last_login_time = ? where id = ?")
         .bind(now)
-        .bind(rowid)
+        .bind(id)
         .execute(&mut db.tx)
         .await?;
 

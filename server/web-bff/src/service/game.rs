@@ -3,8 +3,8 @@ use web_db::user::{query_user, QueryUserParam};
 use web_db::{begin_tx, create_connection, RDS};
 
 pub async fn pack_game_room_player(
-    players: &Vec<idl_gen::bss_websocket::RoomPlayer>,
-) -> Result<Vec<idl_gen::bss_websocket_client::RoomPlayer>> {
+    players: &Vec<idl_gen::bff_websocket::RoomPlayer>,
+) -> Result<Vec<idl_gen::bff_websocket_client::RoomPlayer>> {
     let mut result = Vec::new();
 
     let mut conn = create_connection(RDS::User).await?;
@@ -19,7 +19,7 @@ pub async fn pack_game_room_player(
         )
         .await?;
 
-        let event_player = idl_gen::bss_websocket_client::RoomPlayer {
+        let event_player = idl_gen::bff_websocket_client::RoomPlayer {
             account: user.account,
             display_name: user.username,
             index: player.index,

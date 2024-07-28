@@ -1,5 +1,5 @@
 syntax = "proto3";
-package bss_websocket;
+package bff_websocket;
 
 message RoomPlayer {
   int64 user_id = 1;
@@ -54,7 +54,7 @@ message SendGameEventResponse {
   repeated int64 failed_user_ids = 2;
 }
 
-service BssWebsocketService {
+service BffWebsocketService {
   rpc SendRoomCommonChange(SendRoomCommonChangeRequest)
       returns (SendRoomCommonChangeResponse);
   rpc SendRoomChat(SendRoomChatRequest) returns (SendRoomChatResponse);

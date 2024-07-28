@@ -8,7 +8,7 @@ use heartstone::{
     game::{Config, Game, PlayerConfig},
     model::{CardModel, CardPool},
 };
-use idl_gen::{bss_heartstone::JoinRoomExtraData, bss_websocket_client::BoxProtobufPayload};
+use idl_gen::{bff_heartstone::JoinRoomExtraData, bff_websocket_client::BoxProtobufPayload};
 use protobuf::Message;
 use std::{collections::HashMap, sync::Arc};
 
@@ -86,7 +86,7 @@ impl Room {
                     .map(|card_name| {
                         card_name_map
                             .get(&card_name)
-                            .map(|model| model.card.rowid)
+                            .map(|model| model.card.id)
                             .ok_or_else(|| anyhow!("unknown card {card_name}"))
                     })
                     .collect::<Result<Vec<_>>>()?
@@ -132,7 +132,7 @@ impl Room {
             })
             .collect::<Result<Vec<CardModel>>>()?
             .into_iter()
-            .map(|card_model| (card_model.card.rowid, Arc::new(card_model)))
+            .map(|card_model| (card_model.card.id, Arc::new(card_model)))
             .collect();
 
         Ok(card_pool)

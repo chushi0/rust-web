@@ -1,22 +1,28 @@
 use crate::util::protobuf;
 use anyhow::Result;
 use idl_gen::{
-    bss_websocket::{SendRoomChatRequest, SendRoomChatResponse},
-    bss_websocket_client::PlayerChatEvent,
+    bff_websocket::{SendGameEventRequest, SendGameEventResponse},
+    bff_websocket_client::{GameEvent, GameEventList},
 };
 
-pub async fn handle(req: &SendRoomChatRequest) -> Result<SendRoomChatResponse> {
-    let msg = PlayerChatEvent {
-        player_index: req.sender_user_index,
-        receiver_player_indexes: req.receiver_user_indexes.clone(),
-        message: req.content.clone().into(),
+pub async fn handle(req: &SendGameEventRequest) -> Result<SendGameEventResponse> {
+    let msg = GameEventList {
+        list: req
+            .event_list
+            .iter()
+            .map(|event| GameEvent {
+                event_type: event.event_type.to_string(),
+                payload: event.payload.to_vec(),
+                ..Default::default()
+            })
+            .collect(),
         ..Default::default()
     };
     let msg = protobuf::pack_message(msg)?;
 
     let mut success_players = vec![];
     let mut fail_players = vec![];
-    for user_id in &req.receiver_user_ids {
+    for user_id in &req.user_id {
         let key = crate::ws::game::RoomKey {
             user_id: *user_id,
             game_type: req.game_type,
@@ -26,7 +32,7 @@ pub async fn handle(req: &SendRoomChatRequest) -> Result<SendRoomChatResponse> {
         match crate::ws::game::get_room_wscon(&key).await {
             Some(wscon) => {
                 if let Err(e) = wscon.send_binary(msg.clone()) {
-                    log::warn!("send room chat message error: {}", e);
+                    log::warn!("send game event error: {}", e);
                     fail_players.push(*user_id)
                 } else {
                     success_players.push(*user_id);
@@ -38,6 +44,8 @@ pub async fn handle(req: &SendRoomChatRequest) -> Result<SendRoomChatResponse> {
             }
         }
     }
-
-    Ok(SendRoomChatResponse::default())
+    Ok(SendGameEventResponse {
+        success_user_ids: success_players,
+        failed_user_ids: fail_players,
+    })
 }

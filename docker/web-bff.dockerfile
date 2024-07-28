@@ -14,11 +14,11 @@ RUN rustup component add rustfmt --toolchain stable-x86_64-unknown-linux-gnu
 WORKDIR /usr/src/rust-web
 ## copy files and build
 COPY . .
-RUN cargo build -p web-bss --release
+RUN cargo build -p web-bff --release
 
 # run environment
 FROM debian:bullseye-slim
 WORKDIR /usr/local/home
-COPY --from=build /usr/src/rust-web/target/release/web-bss ./web-bss
-COPY --from=build /usr/src/rust-web/conf/Rocket.bss.toml ./conf/Rocket.bss.toml
-CMD ["./web-bss"]
+COPY --from=build /usr/src/rust-web/target/release/web-bff ./web-bff
+COPY --from=build /usr/src/rust-web/conf/Rocket.bff.toml ./conf/Rocket.bff.toml
+CMD ["./web-bff"]

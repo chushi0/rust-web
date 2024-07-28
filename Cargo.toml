@@ -4,7 +4,7 @@ members = [
   "lib/datastructure",
   "lib/datastructure/datastructure_macro_derive",
   "lib/idl-gen",
-  "server/web-bss",
+  "server/web-bff",
   "server/web-cronjob",
   "server/game-backend",
   "server-lib/web-db",

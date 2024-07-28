@@ -27,12 +27,12 @@ use volo_grpc::server::ServiceBuilder;
 
 pub fn init_grpc() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
-        let addr: SocketAddr = "127.0.0.1:13202".parse().unwrap();
+        let addr: SocketAddr = "127.0.0.1:13500".parse().unwrap();
         let addr = volo::net::Address::from(addr);
 
         Server::new()
             .add_service(
-                ServiceBuilder::new(idl_gen::bss_websocket::BssWebsocketServiceServer::new(
+                ServiceBuilder::new(idl_gen::bff_websocket::BffWebsocketServiceServer::new(
                     crate::handler_grpc::S,
                 ))
                 .build(),
@@ -67,7 +67,7 @@ pub fn init_rocket() -> tokio::task::JoinHandle<()> {
             oss_file_obtain
         ];
         rocket::build()
-            .configure(Config::figment().merge(Toml::file("Rocket.bss.toml").nested()))
+            .configure(Config::figment().merge(Toml::file("./conf/Rocket.bff.toml").nested()))
             .mount("/api/", routes)
             .launch()
             .await

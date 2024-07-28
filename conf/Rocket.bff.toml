@@ -6,4 +6,4 @@ limits = {form = "64 KiB", json = "1 MiB"}
 port = 8080
 
 [release]
-port = 13500
+port = 8080

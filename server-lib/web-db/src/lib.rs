@@ -1,5 +1,5 @@
 use anyhow::Result;
-use sqlx::{Connection, Sqlite, SqliteConnection};
+use sqlx::{mysql::MySqlConnectOptions, Connection, MySql, MySqlConnection};
 
 pub mod bilibili;
 pub mod event;
@@ -17,33 +17,42 @@ pub enum RDS {
     Bilibili,
 }
 
-fn rds_name(rds: RDS) -> &'static str {
-    match rds {
-        RDS::User => "user",
-        RDS::Event => "event",
-        RDS::Furuyoni => "furuyoni",
-        RDS::Hearthstone => "heartstone",
-        RDS::McConfig => "mc-config",
-        RDS::Bilibili => "bilibili",
+impl RDS {
+    fn database_name(&self) -> &'static str {
+        match self {
+            RDS::User => "user",
+            RDS::Event => "event",
+            RDS::Furuyoni => "furuyoni",
+            RDS::Hearthstone => "heartstone",
+            RDS::McConfig => "mc-config",
+            RDS::Bilibili => "bilibili",
+        }
     }
 }
 
 pub struct Transaction<'a> {
-    tx: sqlx::Transaction<'a, Sqlite>,
+    tx: sqlx::Transaction<'a, MySql>,
 }
 
-pub async fn create_connection(rds: RDS) -> Result<SqliteConnection> {
-    let db = rds_name(rds);
-    let path = format!("{}/{db}.db", std::env::var("RUST_WEB_DB_PATH").unwrap());
+pub async fn create_connection(rds: RDS) -> Result<MySqlConnection> {
+    let db = rds.database_name();
+    let username = std::env::var("RUST_WEB_DB_USERNAME")?;
+    let password = std::env::var("RUST_WEB_DB_PASSWORD")?;
 
-    Ok(SqliteConnection::connect(&format!("sqlite://{path}")).await?)
+    let db_option = MySqlConnectOptions::new()
+        .host("rustweb.chushi0.mysql")
+        .username(&username)
+        .password(&password)
+        .database(db);
+
+    Ok(MySqlConnection::connect_with(&db_option).await?)
 }
 
-pub async fn create_connection_with_path(path: &str) -> Result<SqliteConnection> {
-    Ok(SqliteConnection::connect(path).await?)
+pub async fn create_connection_with_path(path: &str) -> Result<MySqlConnection> {
+    Ok(MySqlConnection::connect(path).await?)
 }
 
-pub async fn begin_tx(connection: &mut SqliteConnection) -> Result<Transaction<'_>> {
+pub async fn begin_tx(connection: &mut MySqlConnection) -> Result<Transaction<'_>> {
     Ok(Transaction {
         tx: connection.begin().await?,
     })

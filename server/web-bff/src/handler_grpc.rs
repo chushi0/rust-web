@@ -1,5 +1,5 @@
 use crate::biz::grpc;
-use idl_gen::bss_websocket::*;
+use idl_gen::bff_websocket::*;
 use volo_grpc::{Request, Response, Status};
 
 pub struct S;
@@ -17,7 +17,7 @@ macro_rules! rpc {
     };
 }
 
-impl idl_gen::bss_websocket::BssWebsocketService for S {
+impl idl_gen::bff_websocket::BffWebsocketService for S {
     rpc!(send_room_common_change(SendRoomCommonChangeRequest) -> SendRoomCommonChangeResponse);
     rpc!(send_room_chat(SendRoomChatRequest) -> SendRoomChatResponse);
     rpc!(send_game_event(SendGameEventRequest) -> SendGameEventResponse);

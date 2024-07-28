@@ -1,7 +1,7 @@
 use anyhow::Result;
 use idl_gen::{
-    bss_websocket::{SendRoomCommonChangeRequest, SendRoomCommonChangeResponse},
-    bss_websocket_client::RoomPlayerChangeEvent,
+    bff_websocket::{SendRoomCommonChangeRequest, SendRoomCommonChangeResponse},
+    bff_websocket_client::RoomPlayerChangeEvent,
 };
 
 use crate::{service, util::protobuf};

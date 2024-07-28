@@ -5,7 +5,7 @@ use crate::util::protobuf::pack_message;
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::Result;
-use idl_gen::bss_websocket_client::*;
+use idl_gen::bff_websocket_client::*;
 use idl_gen::game_backend;
 use log::warn;
 use protobuf::Message;
@@ -129,7 +129,7 @@ impl GameBiz {
             return Ok(resp);
         }
 
-        update_user_login_time(&mut tx, user.rowid).await?;
+        update_user_login_time(&mut tx, user.id).await?;
         tx.commit().await?;
 
         self.user = Some(user);
@@ -158,7 +158,7 @@ impl GameBiz {
         }
 
         let rpc_req = game_backend::JoinRoomRequest {
-            user_id: user.rowid,
+            user_id: user.id,
             game_type: req.game_type.into(),
             strategy: game_backend::JoinRoomStrategy::CREATE,
             public: Some(req.init_public),
@@ -168,7 +168,7 @@ impl GameBiz {
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
-            user_id: user.rowid,
+            user_id: user.id,
             game_type: req.game_type,
             room_id: rpc_resp.room_id,
         };
@@ -206,7 +206,7 @@ impl GameBiz {
         }
 
         let rpc_req = game_backend::JoinRoomRequest {
-            user_id: user.rowid,
+            user_id: user.id,
             game_type: req.game_type.into(),
             strategy: game_backend::JoinRoomStrategy::JOIN,
             room_id: Some(req.room_id),
@@ -216,7 +216,7 @@ impl GameBiz {
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
-            user_id: user.rowid,
+            user_id: user.id,
             game_type: req.game_type,
             room_id: rpc_resp.room_id,
         };
@@ -254,7 +254,7 @@ impl GameBiz {
         }
 
         let rpc_req = game_backend::JoinRoomRequest {
-            user_id: user.rowid,
+            user_id: user.id,
             game_type: req.game_type.into(),
             strategy: game_backend::JoinRoomStrategy::MATE,
             extra_data: clone_extra_data(req.extra_data),
@@ -263,7 +263,7 @@ impl GameBiz {
         let rpc_resp = rpc::game::client().join_room(rpc_req).await?.into_inner();
 
         let room_key = RoomKey {
-            user_id: user.rowid,
+            user_id: user.id,
             game_type: req.game_type,
             room_id: rpc_resp.room_id,
         };
@@ -389,10 +389,10 @@ fn clone_extra_data(extra_data: Option<Vec<u8>>) -> Option<pilota::Bytes> {
 
 fn as_client_room_players(
     players: &[idl_gen::game_backend::RoomPlayer],
-) -> Vec<idl_gen::bss_websocket::RoomPlayer> {
+) -> Vec<idl_gen::bff_websocket::RoomPlayer> {
     players
         .iter()
-        .map(|player| idl_gen::bss_websocket::RoomPlayer {
+        .map(|player| idl_gen::bff_websocket::RoomPlayer {
             user_id: player.user_id,
             index: player.index,
             ready: player.ready,

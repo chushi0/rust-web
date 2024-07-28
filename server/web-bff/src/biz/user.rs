@@ -25,7 +25,7 @@ pub async fn new_user() -> Result<Model<NewUserResp>> {
     resp.password = uuid[24..].to_string();
 
     let mut user = User {
-        rowid: 0,
+        id: 0,
         account: resp.account.clone(),
         password: resp.password.clone(),
         username: String::default(),

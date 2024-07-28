@@ -2,13 +2,13 @@ use anyhow::{anyhow, bail, Result};
 use futures_util::{stream::StreamExt, SinkExt};
 use heartstone::model::CardModel;
 use idl_gen::{
-    bss_heartstone::{
+    bff_heartstone::{
         BuffEvent, DamageEvent, DrawCardEvent, JoinRoomExtraData, MinionAttackEvent,
         MinionEffectEvent, MinionEnterEvent, MinionRemoveEvent, MyTurnEndEvent, MyTurnStartEvent,
         NewTurnEvent, PlayerManaChange, PlayerTurnAction, PlayerUseCardEndEvent,
         PlayerUseCardEvent, SwapFrontBackEvent, SyncGameStatus,
     },
-    bss_websocket_client::{
+    bff_websocket_client::{
         BoxProtobufPayload, ClientLoginRequest, ClientLoginResponse, CreateRoomRequest, GameAction,
         GameEventList, JoinRoomRequest, JoinRoomResponse, MateRoomRequest, PlayerChatEvent,
         RoomPlayerAction, RoomPlayerChangeEvent,
@@ -101,7 +101,7 @@ impl Client {
             .into_iter()
             .enumerate()
             .map(|(i, card)| web_db::hearthstone::Card {
-                rowid: i as i64,
+                id: i as i64,
                 code: card.code,
                 name: card.name,
                 card_type: card.card_type,
@@ -121,7 +121,7 @@ impl Client {
             })
             .collect::<Result<Vec<CardModel>>>()?
             .into_iter()
-            .map(|card_model| (card_model.card.rowid, Arc::new(card_model)))
+            .map(|card_model| (card_model.card.id, Arc::new(card_model)))
             .collect();
 
         crate::io().cache_cards(&map.values().cloned().collect::<Vec<_>>());

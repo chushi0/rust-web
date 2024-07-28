@@ -4,7 +4,7 @@ use sqlx::FromRow;
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Character {
-    pub rowid: i64,
+    pub id: i64,
     pub name: String,
     pub description: String,
     pub image_uri: String,
@@ -14,7 +14,7 @@ pub struct Character {
 
 #[derive(Debug, Clone, FromRow)]
 pub struct Card {
-    pub rowid: i64,
+    pub id: i64,
     pub name: String,
     pub derivative: bool, // 衍生物
     pub tag: String,
@@ -37,7 +37,7 @@ pub async fn get_characters_by_ids(
     id: i64,
 ) -> Result<Option<Character>> {
     let character: Result<Character, sqlx::Error> =
-        sqlx::query_as("select * from character where rowid = ?")
+        sqlx::query_as("select * from character where id = ?")
             .bind(id)
             .fetch_one(&mut db.tx)
             .await;

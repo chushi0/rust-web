@@ -1,4 +1,4 @@
-use idl_gen::{bss_websocket_client::BoxProtobufPayload, game_backend::*};
+use idl_gen::{bff_websocket_client::BoxProtobufPayload, game_backend::*};
 use volo_grpc::{Code, Request, Response, Status};
 
 use crate::common::room;
