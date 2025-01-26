@@ -13,11 +13,7 @@ enum ProgramArgs {
 
 #[tokio::main]
 async fn main() {
-    if cfg!(debug_assertions) {
-        log4rs::init_file("conf/log4rs.cronjob.debug.yaml", Default::default()).unwrap();
-    } else {
-        log4rs::init_file("conf/log4rs.cronjob.yaml", Default::default()).unwrap();
-    }
+    log4rs::init_file("conf/log4rs.yaml", Default::default()).unwrap();
 
     let arg = ProgramArgs::parse();
     log::info!("starting cronjob: {arg:?}");
@@ -33,6 +29,6 @@ async fn main() {
     };
 
     if let Err(e) = result {
-        log::error!("execute cronjob fail: {e}");
+        log::error!("execute cronjob fail: {e} {}", e.backtrace());
     }
 }

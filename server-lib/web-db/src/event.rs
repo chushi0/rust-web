@@ -1,59 +1,46 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
+use chrono::{DateTime, Utc};
 use futures::TryStreamExt;
-use sqlx::Row;
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, Default)]
 pub struct DisplayEvent {
     pub id: u64,
     pub title: String,
     pub message: String,
     pub link: String,
-    pub event_time: i64,
-    pub create_time: i64,
-    pub update_time: i64,
+    pub event_time: DateTime<Utc>,
+    pub create_time: DateTime<Utc>,
+    pub update_time: DateTime<Utc>,
 }
 
-#[derive(Debug, Clone, sqlx::FromRow)]
+#[derive(Debug, Clone, sqlx::FromRow, Default)]
 pub struct GithubActivityEvent {
     pub id: u64,
     pub raw_data: String,
-    pub event_time: i64,
-    pub create_time: i64,
-    pub update_time: i64,
+    pub event_time: DateTime<Utc>,
+    pub create_time: DateTime<Utc>,
+    pub update_time: DateTime<Utc>,
 }
 
 pub enum ListDisplayEventParam {
-    ByEventTime { min_event_time: i64 },
+    ByEventTime { min_event_time: DateTime<Utc> },
 }
 
 pub async fn insert_display_event(
     db: &mut super::Transaction<'_>,
     event: &mut DisplayEvent,
 ) -> Result<()> {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)?
-        .as_secs() as i64;
-    event.create_time = now;
-    event.update_time = now;
+    let result = sqlx::query(
+        "insert into display_event (title, message, link, event_time) values (?, ?, ?, ?)",
+    )
+    .bind(&event.title)
+    .bind(&event.message)
+    .bind(&event.link)
+    .bind(event.event_time)
+    .execute(&mut db.tx)
+    .await?;
 
-    sqlx::query(
-        "insert into display_event (title, message, link, event_time, create_time, update_time) values (?, ?, ?, ?, ?, ?)",
-        )
-        .bind(&event.title)
-        .bind(&event.message)
-        .bind(&event.link)
-        .bind(event.event_time)
-        .bind(event.create_time)
-        .bind(event.update_time)
-        .execute( &mut db.tx)
-        .await?;
-
-    let id = sqlx::query("select last_insert_id()")
-        .fetch_one(&mut db.tx)
-        .await?
-        .get(0);
-
-    event.id = id;
+    event.id = result.last_insert_id();
 
     Ok(())
 }
@@ -81,28 +68,14 @@ pub async fn insert_github_activity_event(
     db: &mut super::Transaction<'_>,
     event: &mut GithubActivityEvent,
 ) -> Result<()> {
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)?
-        .as_secs() as i64;
-    event.create_time = now;
-    event.update_time = now;
+    let result =
+        sqlx::query("insert into github_activity_event (raw_data, event_time) values (?, ?)")
+            .bind(&event.raw_data)
+            .bind(event.event_time)
+            .execute(&mut db.tx)
+            .await?;
 
-    sqlx::query(
-    "insert into github_activity_event (raw_data, event_time, create_time, update_time) values (?, ?, ?, ?)",
-    )
-    .bind(&event.raw_data)
-    .bind(event.event_time)
-    .bind(event.create_time)
-    .bind(event.update_time)
-    .execute(&mut db.tx)
-    .await?;
-
-    let id = sqlx::query("select last_insert_id()")
-        .fetch_one(&mut db.tx)
-        .await?
-        .get(0);
-
-    event.id = id;
+    event.id = result.last_insert_id();
 
     Ok(())
 }
@@ -110,19 +83,9 @@ pub async fn insert_github_activity_event(
 pub async fn get_last_github_activity_event(
     db: &mut super::Transaction<'_>,
 ) -> Result<Option<GithubActivityEvent>> {
-    let event: Result<GithubActivityEvent, sqlx::Error> =
+    Ok(
         sqlx::query_as("select * from github_activity_event order by event_time desc limit 1")
-            .fetch_one(&mut db.tx)
-            .await;
-
-    match event {
-        Ok(event) => Ok(Some(event)),
-        Err(error) => {
-            if let sqlx::Error::RowNotFound = error {
-                Ok(None)
-            } else {
-                Err(anyhow!("{error}"))
-            }
-        }
-    }
+            .fetch_optional(&mut db.tx)
+            .await?,
+    )
 }

@@ -13,3 +13,8 @@ entries:
         path: ../../idl/bff_websocket.proto
         includes:
         - ../../idl
+    - idl:
+        source: local
+        path: ../../idl/core_rpc.proto
+        includes:
+        - ../../idl

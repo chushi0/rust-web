@@ -9,16 +9,22 @@ use web_db::{begin_tx, create_connection, Transaction, RDS};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct McAdvancement {
     parent: Option<String>,
-    display: McAdvancementDisplay,
-    requirements: Vec<Vec<String>>,
+    display: Option<McAdvancementDisplay>,
+    requirements: Option<Vec<Vec<String>>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct McAdvancementDisplay {
     title: McTranslate,
     description: McTranslate,
-    icon: HashMap<String, String>,
-    frame: String,
+    icon: Icon,
+    frame: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Icon {
+    item: Option<String>,
+    block: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -32,7 +38,7 @@ pub async fn handle(path: &str, lang: &str) -> Result<()> {
     let mut conn = create_connection(RDS::McConfig).await?;
     let mut tx = begin_tx(&mut conn).await?;
 
-    delete_all_advancement(&mut tx).await?;
+    // delete_all_advancement(&mut tx).await?;
 
     let mut namespace_entries = tokio::fs::read_dir(path).await?;
     while let Some(entry) = namespace_entries.next_entry().await? {
@@ -65,18 +71,24 @@ async fn collect_advancement(
         let mut data = Vec::new();
         reader.read_to_end(&mut data).await?;
 
-        let mc_advancement: McAdvancement = serde_json::from_slice(data.as_slice())?;
+        let mc_advancement: McAdvancement = serde_json::from_slice(data.as_slice())
+            .map_err(|e| anyhow!("parse file {entry:?} fail: {e}"))?;
+
+        let Some(display) = mc_advancement.display else {
+            continue;
+        };
 
         let mut advancement = Advancement {
-            id: format!(
-                "minecraft:{}/{}",
+            id: 0,
+            mcid: format!(
+                "blazeandcave:{}/{}",
                 namespace_entry.file_name().to_string_lossy(),
                 entry.file_name().to_string_lossy(),
             ),
-            title: mc_advancement.display.title.get(lang)?,
-            description: mc_advancement.display.description.get(lang)?,
-            icon: get_icon(&mc_advancement.display.icon),
-            frame: mc_advancement.display.frame.clone(),
+            title: display.title.get(lang)?,
+            description: display.description.get(lang)?,
+            icon: get_icon(&display.icon),
+            frame: display.frame.clone().unwrap_or("task".to_string()),
             parent: mc_advancement.parent.clone(),
             requirements: serde_json::ser::to_string(&mc_advancement.requirements)?,
         };
@@ -87,11 +99,11 @@ async fn collect_advancement(
     Ok(())
 }
 
-fn get_icon(icon: &HashMap<String, String>) -> Option<String> {
-    if let Some(img) = icon.get("item") {
+fn get_icon(icon: &Icon) -> Option<String> {
+    if let Some(img) = &icon.item {
         Some(img.clone())
     } else {
-        icon.get("block").cloned()
+        icon.block.clone()
     }
 }
 

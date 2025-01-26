@@ -12,7 +12,7 @@ pub mod rpc;
 
 #[tokio::main]
 async fn main() {
-    log4rs::init_file("conf/log4rs.game-backend.yaml", Default::default()).unwrap();
+    log4rs::init_file("conf/log4rs.yaml", Default::default()).unwrap();
 
     let addr: SocketAddr = "0.0.0.0:8000".parse().unwrap();
     let addr = volo::net::Address::from(addr);

@@ -6,7 +6,7 @@ appenders:
       pattern: "{h({l} {d(%Y-%m-%d %H:%M:%S)} {M} {f}#{L})} - {m}{n}"
   file:
     kind: file
-    path: "/home/chushi0/log/web-cronjob.log"
+    path: "/var/log/core-rpc.log"
     encoder:
       pattern: "{l} {d(%Y-%m-%d %H:%M:%S)} {M} {f}#{L} - {m}{n}"
 root:

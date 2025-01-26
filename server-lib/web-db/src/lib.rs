@@ -40,7 +40,7 @@ pub async fn create_connection(rds: RDS) -> Result<MySqlConnection> {
     let password = std::env::var("RUST_WEB_DB_PASSWORD")?;
 
     let db_option = MySqlConnectOptions::new()
-        .host("rustweb.chushi0.mysql")
+        .host("mysql-service.default.svc.cluster.local")
         .username(&username)
         .password(&password)
         .database(db);

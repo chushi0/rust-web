@@ -17,6 +17,8 @@ pub mod ws;
 
 #[tokio::main]
 async fn main() {
+    log4rs::init_file("conf/log4rs.yaml", Default::default()).unwrap();
+
     let grpc = boot::init_grpc();
     let ws = boot::init_websocket();
     let api = boot::init_rocket();

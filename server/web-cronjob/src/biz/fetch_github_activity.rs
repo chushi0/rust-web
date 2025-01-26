@@ -1,6 +1,6 @@
 use crate::api::github::activity::{list_user_public_events, EventPayload};
-use anyhow::Result;
-use std::time::{SystemTime, UNIX_EPOCH};
+use anyhow::{anyhow, Result};
+use chrono::DateTime;
 use web_db::event::{
     get_last_github_activity_event, insert_display_event, insert_github_activity_event,
     DisplayEvent, GithubActivityEvent,
@@ -16,7 +16,8 @@ pub async fn handle() -> Result<()> {
     log::debug!("last_github_activity: {last_github_activity:?}");
     let last_event_time = match last_github_activity {
         Some(event) => event.event_time,
-        None => 1672502400, // 第一次拉取，仅拉取2023/01/01后的信息
+        None => DateTime::from_timestamp(1672502400, 0)
+            .ok_or(anyhow!("datetime from timestamp failed"))?, // 第一次拉取，仅拉取2023/01/01后的信息
     };
 
     // 开始本次加载
@@ -28,10 +29,10 @@ pub async fn handle() -> Result<()> {
             break;
         }
 
-        let now = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs() as i64;
-
         for event in &events {
-            let event_time = event.created_at.unix_timestamp();
+            let event_time = DateTime::from_timestamp(event.created_at.unix_timestamp(), 0).ok_or(
+                anyhow!("event.created_at.unix_timestamp is not a valid timestamp"),
+            )?;
             log::debug!("event_time: {event_time}");
 
             if event_time <= last_event_time {
@@ -76,8 +77,7 @@ pub async fn handle() -> Result<()> {
                 id: 0,
                 raw_data,
                 event_time,
-                create_time: now,
-                update_time: now,
+                ..Default::default()
             };
 
             let mut display_event = DisplayEvent {
@@ -86,8 +86,7 @@ pub async fn handle() -> Result<()> {
                 message: event_message,
                 link: format!("https://github.com/{}", event.repository.name),
                 event_time,
-                create_time: now,
-                update_time: now,
+                ..Default::default()
             };
 
             insert_github_activity_event(&mut tx, &mut github_activity_event).await?;

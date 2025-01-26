@@ -3,7 +3,8 @@ use futures::TryStreamExt;
 
 #[derive(Debug, Clone, sqlx::FromRow)]
 pub struct Advancement {
-    pub id: String,
+    pub id: u64,
+    pub mcid: String,
     pub title: String,
     pub description: String,
     pub icon: Option<String>,
@@ -33,8 +34,8 @@ pub async fn insert_advancement(
     db: &mut super::Transaction<'_>,
     advancement: &mut Advancement,
 ) -> Result<()> {
-    sqlx::query("insert into advancement (id, title, description, icon, frame, parent, requirements) values (?, ?, ?, ?, ?, ?, ?)")
-    .bind(&advancement.id)
+    sqlx::query("insert into advancement (mcid, title, description, icon, frame, parent, requirements) values (?, ?, ?, ?, ?, ?, ?)")
+    .bind(&advancement.mcid)
     .bind(&advancement.title)
     .bind(&advancement.description)
     .bind(&advancement.icon)

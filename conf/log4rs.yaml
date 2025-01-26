@@ -4,6 +4,11 @@ appenders:
     kind: console
     encoder:
       pattern: "{h({l} {d(%Y-%m-%d %H:%M:%S)} {M} {f}#{L})} - {m}{n}"
+  file:
+    kind: file
+    path: "/var/log/web-service.log"
+    encoder:
+      pattern: "{l} {d(%Y-%m-%d %H:%M:%S)} {M} {f}#{L} - {m}{n}"
 root:
   level: debug
   appenders:

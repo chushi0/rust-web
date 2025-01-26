@@ -27,7 +27,7 @@ use volo_grpc::server::ServiceBuilder;
 
 pub fn init_grpc() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
-        let addr: SocketAddr = "127.0.0.1:13500".parse().unwrap();
+        let addr: SocketAddr = "0.0.0.0:13000".parse().unwrap();
         let addr = volo::net::Address::from(addr);
 
         Server::new()
@@ -59,6 +59,7 @@ pub fn init_rocket() -> tokio::task::JoinHandle<()> {
     tokio::spawn(async {
         let routes = routes![
             home_events,
+            testdns,
             user_new,
             mc_globaldata_advancement,
             mc_playerdata_advancement,

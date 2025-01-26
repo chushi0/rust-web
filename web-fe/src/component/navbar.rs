@@ -19,6 +19,14 @@ pub fn NavBar(props: &NavBarProps) -> Html {
             href: crate::Route::Home,
         },
         Item::Menu {
+            title: "MC",
+            children: Rc::new(vec![Item::Item {
+                id: "mc-advancement",
+                title: "进度查看",
+                href: crate::Route::McAdvancement,
+            }]),
+        },
+        Item::Menu {
             title: "游戏",
             children: Rc::new(vec![Item::Item {
                 id: "game-number-tower",

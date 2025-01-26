@@ -6,6 +6,7 @@ members = [
   "lib/idl-gen",
   "server/web-bff",
   "server/web-cronjob",
+  "server/core-rpc",
   "server/game-backend",
   "server-lib/web-db",
   "server-lib/aliyun-helper",

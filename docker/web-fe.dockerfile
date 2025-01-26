@@ -17,3 +17,6 @@ COPY . .
 ## compile
 WORKDIR /usr/src/rust-web/web-fe
 RUN trunk build --release
+
+# run environment
+# FROM nginx:slim

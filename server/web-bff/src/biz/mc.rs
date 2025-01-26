@@ -36,7 +36,7 @@ pub async fn get_advancement_config() -> Result<Model<GetAdvancementResp>> {
     let mut res = vec![];
     for advancement in advancements {
         res.push(AdvancementConfig {
-            id: advancement.id.clone(),
+            id: advancement.mcid.clone(),
             title: advancement.title.clone(),
             description: advancement.description.clone(),
             icon: advancement.icon.clone(),

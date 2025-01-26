@@ -1,3 +1,5 @@
+use std::net::ToSocketAddrs;
+
 use crate::biz;
 use crate::model::Model;
 use rocket::serde::json::Json;
@@ -5,15 +7,20 @@ use rocket::serde::json::Json;
 #[get("/home/events")]
 pub async fn home_events() -> Json<Model<biz::home::GetEventsResp>> {
     Json(biz::home::get_events().await.unwrap_or_else(|e| {
-        log::error!("handle home_events error: {e}");
+        log::error!("handle home_events error: {e} {}", e.backtrace());
         Model::new_error()
     }))
+}
+
+#[get("/testdns?<host>")]
+pub async fn testdns(host: &str) -> String {
+    format!("{:#?}", host.to_socket_addrs())
 }
 
 #[post("/user/new")]
 pub async fn user_new() -> Json<Model<biz::user::NewUserResp>> {
     Json(biz::user::new_user().await.unwrap_or_else(|e| {
-        log::error!("handle user_new error: {e}");
+        log::error!("handle user_new error: {e} {}", e.backtrace());
         Model::new_error()
     }))
 }

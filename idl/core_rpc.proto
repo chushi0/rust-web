@@ -1,0 +1,72 @@
+syntax = "proto3";
+package core_rpc;
+
+message GithubActivityEvent {
+  uint64 id = 1;
+  string raw_data = 2;
+  int64 event_time = 3;
+  int64 create_time = 4;
+  int64 update_time = 5;
+}
+
+message CreateDisplayEvent {
+  string title = 1;
+  string message = 2;
+  string link = 3;
+}
+
+message CreateGithubActivityEvent {
+  string raw_data = 1;
+  int64 event_time = 2;
+  optional CreateDisplayEvent display_event = 3;
+}
+
+message DisplayEvent {
+  uint64 id = 1;
+  string title = 2;
+  string message = 3;
+  string link = 4;
+  int64 event_time = 5;
+  int64 create_time = 6;
+  int64 update_time = 7;
+}
+
+message CreateGithubActivityEventRequest {
+  repeated CreateGithubActivityEvent events = 1;
+}
+
+message CreateGithubActivityEventResponse {}
+
+message ListGithubActivityEventRequest {
+  int64 offset = 1;
+  int64 count = 2;
+  optional bool order_by_event_time_desc = 3;
+}
+
+message ListGithubActivityEventResponse {
+  int64 total = 1;
+  repeated GithubActivityEvent events = 3;
+}
+
+message ListDisplayEventRequest {
+  int64 offset = 1;
+  int64 count = 2;
+  optional int64 min_event_time = 3;
+  optional int64 max_event_time = 4;
+}
+
+message ListDisplayEventResponse {
+  int64 total = 1;
+  repeated DisplayEvent events = 2;
+}
+
+service CoreRpcService {
+  rpc CreateGithubActivityEvent(CreateGithubActivityEventRequest)
+      returns (CreateGithubActivityEventResponse);
+
+  rpc ListGithubActivityEvent(ListGithubActivityEventRequest)
+      returns (ListGithubActivityEventResponse);
+
+  rpc ListDisplayEvent(ListDisplayEventRequest)
+      returns (ListDisplayEventResponse);
+}

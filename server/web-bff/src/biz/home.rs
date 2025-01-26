@@ -4,31 +4,33 @@ use std::time::UNIX_EPOCH;
 
 use crate::model::home::*;
 use crate::model::Model;
+use crate::rpc;
 use anyhow::*;
-use web_db::event::{list_display_event, ListDisplayEventParam};
-use web_db::{begin_tx, create_connection, RDS};
+use idl_gen::core_rpc::ListDisplayEventRequest;
 
 pub type GetEventsResp = Vec<EventData>;
 pub async fn get_events() -> Result<Model<GetEventsResp>> {
-    let mut conn = create_connection(RDS::Event).await?;
-    let mut tx = begin_tx(&mut conn).await?;
-
     let systime = SystemTime::now().duration_since(UNIX_EPOCH)?;
+    let min_event_time = (systime - Duration::from_secs(12 * 30 * 86400)).as_secs() as i64;
 
-    let events = list_display_event(
-        &mut tx,
-        ListDisplayEventParam::ByEventTime {
-            min_event_time: (systime - Duration::from_secs(30 * 86400)).as_secs() as i64,
-        },
-    )
-    .await?;
+    let events = rpc::core_rpc::client()?
+        .list_display_event(ListDisplayEventRequest {
+            offset: 0,
+            count: 100,
+            min_event_time: Some(min_event_time),
+            ..Default::default()
+        })
+        .await?;
+
     let events = events
-        .iter()
+        .into_inner()
+        .events
+        .into_iter()
         .map(|event| EventData {
-            title: event.title.clone(),
-            msg: event.message.clone(),
+            title: event.title.into(),
+            msg: event.message.into(),
             time: event.event_time,
-            link: event.link.clone(),
+            link: event.link.into(),
         })
         .collect();
 

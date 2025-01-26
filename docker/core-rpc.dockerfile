@@ -11,13 +11,12 @@ COPY ./docker/cargo.toml ${CARGO_HOME}/config.toml
 WORKDIR /usr/src/rust-web
 ## copy files and build
 COPY . .
-RUN cargo build -p web-bff --release
+RUN cargo build -p core-rpc --release
 
 # run environment
 FROM debian:bookworm-slim
 WORKDIR /usr/local/home
 COPY --from=build /usr/src/rust-web/conf/log4rs.prod.yaml ./conf/log4rs.yaml
-COPY --from=build /usr/src/rust-web/target/release/web-bff ./web-bff
-COPY --from=build /usr/src/rust-web/conf/Rocket.bff.toml ./conf/Rocket.bff.toml
+COPY --from=build /usr/src/rust-web/target/release/core-rpc ./core-rpc
 RUN mkdir -p /var/log
-CMD ["./web-bff"]
+CMD ["./core-rpc"]
