@@ -1,1 +1,0 @@
-*/30 * * * *  cd /usr/local/home && ./web-cronjob fetch-github-activity > /var/log/rust-web/web-cronjob.log

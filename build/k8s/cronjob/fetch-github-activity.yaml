@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-fetch-github-activity
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cronjob-fetch-github-activity-container
+            image: chushi0/rustweb/server-cronjob:v1.0.2
+            imagePullPolicy: Never
+            env:
+              - name: RUST_BACKTRACE
+                value: "1"
+              - name: RUST_LIB_BACKTRACE
+                value: "1"
+            workingDir: /usr/local/home
+            command: ["/usr/local/home/server-cronjob"]
+            args: ["fetch-github-activity"] 
+          restartPolicy: Never

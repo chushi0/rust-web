@@ -1,5 +1,5 @@
 /.github
 /.vscode
 /target
-/docker/*.dockerfile
-/k8s
+/build/docker/*.dockerfile
+/build/k8s

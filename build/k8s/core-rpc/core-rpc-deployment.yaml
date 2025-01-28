@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: core-rpc-deployment
+  labels:
+    app: core-rpc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: core-rpc
+  template:
+    metadata:
+      labels:
+        app: core-rpc
+    spec:
+      containers:
+        - name: core-rpc
+          image: chushi0/rustweb/server-core-rpc:latest
+          imagePullPolicy: Never
+          env:
+            - name: RUST_BACKTRACE
+              value: "1"
+            - name: RUST_LIB_BACKTRACE
+              value: "1"
+            - name: RUSTWEB_DB_HOST
+              value: "mysql-service.default.svc.cluster.local"
+            - name: RUSTWEB_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-root-password
+                  key: app-username
+            - name: RUSTWEB_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-root-password
+                  key: app-password
+            - name: RUSTWEB_DB_DATABASE
+              value: "rustweb"
+          ports:
+            - containerPort: 13000
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: core-rpc-service
+spec:
+  selector:
+    app: core-rpc
+  ports:
+    - protocol: TCP
+      port: 13000
+      targetPort: 13000
+  type: ClusterIP
