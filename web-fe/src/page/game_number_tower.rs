@@ -96,10 +96,10 @@ impl Component for GameNumberTowerPage {
                     ctx.context.dyn_into().expect("should be 2d context");
                 let width = ctx.width as f64;
                 let height = ctx.height as f64;
-                canvas.set_fill_style(&JsValue::from("white"));
+                canvas.set_fill_style_str("white");
                 canvas.fill_rect(0.0, 0.0, width, height);
                 canvas.set_line_width(1.0);
-                canvas.set_stroke_style(&JsValue::from("black"));
+                canvas.set_stroke_style_str("black");
                 canvas.begin_path();
                 canvas.rect(0.0, 0.0, width, height);
                 canvas.stroke();
@@ -118,10 +118,10 @@ impl Component for GameNumberTowerPage {
                     ctx.context.dyn_into().expect("should be 2d context");
                 let width = ctx.width as f64;
                 let height = ctx.height as f64;
-                canvas.set_fill_style(&JsValue::from("white"));
+                canvas.set_fill_style_str("white");
                 canvas.fill_rect(0.0, 0.0, width, height);
                 canvas.set_line_width(1.0);
-                canvas.set_stroke_style(&JsValue::from("black"));
+                canvas.set_stroke_style_str("black");
                 canvas.begin_path();
                 canvas.rect(0.0, 0.0, width, height);
                 canvas.stroke();
@@ -227,7 +227,8 @@ impl Component for GameNumberTowerPage {
                             contexttype={CanvasContextType::Type2D}
                             oninit={init_callback}
                             onrender={render_callback}
-                            onmouseup={onmouseup} />
+                            onmouseup={onmouseup}
+                            onmousedown={None as Option<Callback<CanvasMouseEvent>>} />
 
                     <br /><br /><br /><br /><br />
 
@@ -323,7 +324,7 @@ fn get_click_layer(tower: &Tower, x: f64, y: f64) -> Option<usize> {
 fn draw_actor(canvas: &CanvasRenderingContext2d, x: f64, y: f64, atk: i64, atk_color: &str) {
     let y = y - 80.0;
     canvas.set_line_width(3.0);
-    canvas.set_stroke_style(&JsValue::from("black"));
+    canvas.set_stroke_style_str("black");
     canvas.begin_path();
     canvas
         .arc(x, y, 15.0, 0.0, f64::to_radians(360.0))
@@ -342,7 +343,7 @@ fn draw_actor(canvas: &CanvasRenderingContext2d, x: f64, y: f64, atk: i64, atk_c
 
     canvas.set_font("2.5em Arial");
     canvas.set_line_width(1.0);
-    canvas.set_fill_style(&JsValue::from(atk_color));
+    canvas.set_fill_style_str(atk_color);
     let atk_text = atk.to_string();
     let measure = canvas.measure_text(&atk_text).expect("measure_text");
     canvas
@@ -358,7 +359,7 @@ fn draw_item(canvas: &CanvasRenderingContext2d, x: f64, y: f64, item_str: String
     let y = y - 35.0;
     canvas.set_font("4em Arial");
     canvas.set_line_width(1.0);
-    canvas.set_fill_style(&JsValue::from("blue"));
+    canvas.set_fill_style_str("blue");
     let measure = canvas.measure_text(&item_str).expect("measure_text");
     canvas
         .fill_text(
@@ -381,7 +382,7 @@ fn draw_enemy(canvas: &CanvasRenderingContext2d, x: f64, y: f64, atk: i64) {
 
 fn draw_floor(canvas: &CanvasRenderingContext2d, x: f64, y: f64) {
     canvas.set_line_width(3.0);
-    canvas.set_stroke_style(&JsValue::from("black"));
+    canvas.set_stroke_style_str("black");
     canvas.begin_path();
     canvas.rect(x - 350.0 / 2.0, y - 200.0, 350.0, 200.0);
     canvas.stroke();
@@ -389,7 +390,7 @@ fn draw_floor(canvas: &CanvasRenderingContext2d, x: f64, y: f64) {
 
 fn draw_tower_top(canvas: &CanvasRenderingContext2d, x: f64, y: f64) {
     canvas.set_line_width(3.0);
-    canvas.set_stroke_style(&JsValue::from("black"));
+    canvas.set_stroke_style_str("black");
     canvas.begin_path();
     canvas.move_to(x - 350.0 / 2.0, y);
     canvas.line_to(x, y - 170.0);

@@ -406,7 +406,7 @@ fn fetch_player_data(link: Scope<McAdvancementPage>, name: String) {
 }
 
 async fn load_player_data(name: String) -> Result<HashMap<String, AdvancementData>, Error> {
-    let raw_data = Request::new("/api/console/mc/playerdata/advancement")
+    let raw_data = Request::get("/api/console/mc/playerdata/advancement")
         .query(vec![("name", name)])
         .method(gloo_net::http::Method::GET)
         .send()

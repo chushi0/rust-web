@@ -5,7 +5,7 @@ use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
 fn totp(secret: &str) -> Result<String> {
-    let secret_bytes = base32::decode(base32::Alphabet::RFC4648 { padding: false }, secret)
+    let secret_bytes = base32::decode(base32::Alphabet::Rfc4648 { padding: false }, secret)
         .ok_or(anyhow!("invalid secret key"))?;
     let current_time = js_sys::Date::new_0().get_time() as u64;
     let code = totp_lite::totp_custom::<Sha1>(30000, 6, &secret_bytes, current_time);

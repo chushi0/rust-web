@@ -128,10 +128,11 @@ async fn load_events() -> Result<Vec<EventData>, Error> {
     gloo_net::http::Request::get("/api/home/events")
         .send()
         .await?
-        .json::<Model<Vec<EventData>>>()
+        .json::<Model<GetEventResponse>>()
         .await?
         .data
         .ok_or(Error::GlooError("empty data".to_string()))
+        .map(|resp| resp.events)
 }
 
 #[function_component]

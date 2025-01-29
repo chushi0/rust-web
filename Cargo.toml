@@ -1,9 +1,11 @@
 [workspace]
 members = [
   "common",
-  "server-common", "server/server-api",
+  "server-common",
+  "server/server-api",
   "server/server-core-rpc",
   "server/server-cronjob",
+  "web-fe",
 ]
 resolver = "2"
 

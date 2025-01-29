@@ -9,3 +9,8 @@ pub struct EventData {
     pub time: OffsetDateTime,
     pub link: String,
 }
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetEventResponse {
+    pub events: Vec<EventData>,
+}
