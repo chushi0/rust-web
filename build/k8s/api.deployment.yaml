@@ -1,22 +1,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web-bff-deployment
+  name: api-deployment
   labels:
-    app: web-bff
+    app: api
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: web-bff
+      app: api
   template:
     metadata:
       labels:
-        app: web-bff
+        app: api
     spec:
       containers:
-        - name: web-bff
-          image: chushi0/rustweb/web-bff:latest
+        - name: api
+          image: chushi0/rustweb/server-api:latest
           imagePullPolicy: Never
           env:
             - name: RUST_BACKTRACE
@@ -25,38 +25,18 @@ spec:
               value: "1"
           ports:
             - containerPort: 8080
-            - containerPort: 3000
-            - containerPort: 13000
 
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: web-bff-service-http
+  name: api-service
 spec:
   selector:
-    app: web-bff
+    app: api
   ports:
     - protocol: TCP
       port: 8080
       targetPort: 8080
       name: http
-    - protocol: TCP
-      port: 3000
-      targetPort: 13000
-      name: websocket
   type: LoadBalancer
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: web-bff-service-rpc
-spec:
-  selector:
-    app: web-bff
-  ports:
-    - protocol: TCP
-      port: 13000
-      targetPort: 13000
-  type: ClusterIP

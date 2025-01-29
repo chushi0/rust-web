@@ -10,7 +10,7 @@ spec:
         spec:
           containers:
           - name: cronjob-fetch-github-activity-container
-            image: chushi0/rustweb/server-cronjob:v1.0.2
+            image: chushi0/rustweb/server-cronjob
             imagePullPolicy: Never
             env:
               - name: RUST_BACKTRACE

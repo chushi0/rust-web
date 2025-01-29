@@ -15,10 +15,10 @@ COPY ./build/docker/cargo.toml ${CARGO_HOME}/config.toml
 WORKDIR /usr/src/rust-web
 ## copy files and build
 COPY . .
-RUN cargo build -p server-core-rpc --release
+RUN cargo build -p server-api --release
 
 # run environment
 FROM debian:bookworm-slim
 WORKDIR /usr/local/home
-COPY --from=build /usr/src/rust-web/target/release/server-core-rpc ./server-core-rpc
-CMD ["./server-core-rpc"]
+COPY --from=build /usr/src/rust-web/target/release/server-api ./server-api
+CMD ["./server-api"]
