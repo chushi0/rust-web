@@ -28,12 +28,12 @@ spec:
             - name: RUSTWEB_DB_USERNAME
               valueFrom:
                 secretKeyRef:
-                  name: mysql-root-password
+                  name: mysql-password
                   key: app-username
             - name: RUSTWEB_DB_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mysql-root-password
+                  name: mysql-password
                   key: app-password
             - name: RUSTWEB_DB_DATABASE
               value: "rustweb"

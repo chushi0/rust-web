@@ -20,7 +20,7 @@ spec:
             - name: MYSQL_ROOT_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: mysql-root-password
+                  name: mysql-password
                   key: root-password
           volumeMounts:
             - name: mysql-data
