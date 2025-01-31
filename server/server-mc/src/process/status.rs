@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum ProcessStatus {
     Starting(StartingStatus),
     Running,
@@ -8,7 +8,7 @@ pub enum ProcessStatus {
     Terminated,
 }
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub enum StartingStatus {
     DownloadServerJar,
     DownloadWorld,
@@ -16,7 +16,7 @@ pub enum StartingStatus {
     WaitingForServerReady,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Clone, Default)]
 pub struct StatusInfo {
     pub start_time: DateTime<Utc>,
     pub end_time: Option<DateTime<Utc>>,

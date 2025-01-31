@@ -44,6 +44,7 @@ pub async fn delete_server_config(
     let result = service::server_config::delete_server_config(
         &mut Context::PoolRef(&service.db),
         service.oss_client.with_http(&service.http_client),
+        &service.process_manager,
         req,
     )
     .await;

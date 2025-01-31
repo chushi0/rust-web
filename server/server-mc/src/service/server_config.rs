@@ -9,8 +9,11 @@ use server_common::{
 };
 use sqlx::Database;
 
-use crate::dao::server_config::{
-    ListServerConfigParameters, ServerConfig, ServerConfigRepository, UpdateServerConfig,
+use crate::{
+    dao::server_config::{
+        ListServerConfigParameters, ServerConfig, ServerConfigRepository, UpdateServerConfig,
+    },
+    process::manager::Manager,
 };
 
 const WORLD_URI_PREFIX: &str = "rust-web/mc/world/";
@@ -80,14 +83,7 @@ where
         .list_server_config(&params)
         .await?
         .into_iter()
-        .map(|server_config| common::tonic_idl_gen::ServerConfig {
-            id: server_config.id,
-            name: server_config.name,
-            version: server_config.mc_version,
-            world_uri: server_config.world_uri,
-            resource_uri: server_config.resource_uri,
-            motd: server_config.motd,
-        })
+        .map(ServerConfig::into)
         .collect();
     let count = db.count_server_config(&params).await?;
 
@@ -100,6 +96,7 @@ where
 pub async fn delete_server_config<DB: Database>(
     db: ContextRef<'_, '_, DB>,
     oss_client: HttpOssClient<'_, '_>,
+    manager: &Manager,
     req: DeleteServerConfigRequest,
 ) -> Result<DeleteServerConfigResponse>
 where
@@ -113,15 +110,37 @@ where
     db.delete_server_config(server_config.id).await?;
 
     // delete oss reources
-    if let Some(world_uri) = server_config.world_uri {
-        oss_client.delete_object(&world_uri).await?;
+    if let Some(world_uri) = &server_config.world_uri {
+        oss_client.delete_object(world_uri).await?;
     }
 
-    if let Some(resource_uri) = server_config.resource_uri {
-        oss_client.delete_object(&resource_uri).await?;
+    if let Some(resource_uri) = &server_config.resource_uri {
+        oss_client.delete_object(resource_uri).await?;
     }
 
-    // TODO: clean disk cache
+    // clean disk cache
+    if manager
+        .running_config()
+        .await
+        .is_some_and(|server_config| server_config.id == req.id)
+    {
+        manager.stop_server_config().await?;
+    }
+
+    manager.clean_world_cache(&server_config).await?;
 
     Ok(DeleteServerConfigResponse {})
+}
+
+impl From<ServerConfig> for common::tonic_idl_gen::ServerConfig {
+    fn from(value: ServerConfig) -> Self {
+        Self {
+            id: value.id,
+            name: value.name,
+            version: value.mc_version,
+            world_uri: value.world_uri,
+            resource_uri: value.resource_uri,
+            motd: value.motd,
+        }
+    }
 }

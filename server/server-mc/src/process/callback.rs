@@ -2,6 +2,8 @@ use std::future::Future;
 
 use anyhow::Result;
 
+use crate::dao::server_config::ServerConfig;
+
 pub trait ProcessService: Send + Sync + 'static {
     fn download_server_jar(
         &self,
@@ -13,6 +15,7 @@ pub trait ProcessService: Send + Sync + 'static {
         &self,
         root: &str,
         world_dir_name: &str,
+        server_config: &ServerConfig,
     ) -> impl Future<Output = Result<()>> + Send;
 
     fn server_started(&self) -> impl Future<Output = ()> + Send;

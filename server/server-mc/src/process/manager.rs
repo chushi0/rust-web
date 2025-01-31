@@ -8,9 +8,12 @@ use std::{
 use anyhow::{bail, Result};
 use chrono::Utc;
 use regex::Regex;
-use tokio::sync::{
-    mpsc::{self, Receiver, Sender},
-    RwLock,
+use tokio::{
+    fs,
+    sync::{
+        mpsc::{self, Receiver, Sender},
+        RwLock,
+    },
 };
 use tracing::{info, warn};
 
@@ -31,6 +34,7 @@ pub struct Manager {
 
 struct ManagerInner {
     message_sender: Sender<Message>,
+    current_server_config: RwLock<Option<ServerConfig>>,
     status: RwLock<HashMap<ProcessStatus, StatusInfo>>,
 }
 
@@ -58,6 +62,20 @@ impl Manager {
 
         Ok(())
     }
+
+    pub async fn running_config(&self) -> Option<ServerConfig> {
+        (*self.inner.current_server_config.read().await).clone()
+    }
+
+    pub async fn status_map(&self) -> HashMap<ProcessStatus, StatusInfo> {
+        (*self.inner.status.read().await).clone()
+    }
+
+    pub async fn clean_world_cache(&self, server_config: &ServerConfig) -> Result<()> {
+        let world_dir = format!("{}/{}", RUN_DIR, server_config.id.to_string());
+        fs::remove_dir_all(world_dir).await?;
+        Ok(())
+    }
 }
 
 impl ManagerInner {
@@ -65,6 +83,7 @@ impl ManagerInner {
         let (sender, receiver) = mpsc::channel(10);
         let manager = Arc::new(ManagerInner {
             message_sender: sender,
+            current_server_config: RwLock::new(None),
             status: RwLock::new(HashMap::new()),
         });
         tokio::spawn(manager_loop(service, manager.clone(), receiver));
@@ -115,6 +134,7 @@ async fn manager_loop(
         };
 
         manager.clean_status().await;
+        *(manager.current_server_config.write().await) = Some(server_config.clone());
 
         let mut process_lifecycle = match starting_service(&service, &manager, &server_config).await
         {
@@ -210,7 +230,7 @@ async fn starting_service(
         ))
         .await;
     service
-        .initialize_config_files(RUN_DIR, &server_config.id.to_string())
+        .initialize_config_files(RUN_DIR, &server_config.id.to_string(), server_config)
         .await?;
 
     // starting server and wait to ready

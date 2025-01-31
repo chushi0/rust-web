@@ -2,8 +2,9 @@ use std::{fs::File as StdFile, path::Path};
 
 use anyhow::{anyhow, bail, Result};
 use common::tonic_idl_gen::{
-    StartServerConfigRequest, StartServerConfigResponse, StopServerConfigRequest,
-    StopServerConfigResponse,
+    GetCurrentServerConfigRequest, GetCurrentServerConfigResponse, RunningServerStage,
+    RunningServerStageInfo, RunningServerStatus, StartServerConfigRequest,
+    StartServerConfigResponse, StopServerConfigRequest, StopServerConfigResponse,
 };
 use futures_util::TryStreamExt;
 use reqwest::Client;
@@ -17,8 +18,14 @@ use tracing::info;
 use zip::ZipArchive;
 
 use crate::{
-    dao::{server_config::ServerConfigRepository, version::VersionRepository},
-    process::manager::Manager,
+    dao::{
+        server_config::{ServerConfig, ServerConfigRepository},
+        version::VersionRepository,
+    },
+    process::{
+        manager::Manager,
+        status::{ProcessStatus, StartingStatus},
+    },
 };
 
 pub struct ProcessService {
@@ -122,6 +129,7 @@ impl crate::process::callback::ProcessService for ProcessService {
         &self,
         root: &str,
         world_dir_name: &str,
+        server_config: &ServerConfig,
     ) -> anyhow::Result<()> {
         // eula.txt
         {
@@ -143,11 +151,15 @@ impl crate::process::callback::ProcessService for ProcessService {
                 .await?;
             file.write_all("enable-command-block=true\n".as_bytes())
                 .await?;
-            file.write_all(
-                format!("resource-pack=http://{public_server_host}/api/mc-resource-pack?id=\n")
-                    .as_bytes(),
-            )
-            .await?;
+            file.write_all(format!("motd={}", server_config.motd).as_bytes())
+                .await?;
+            if server_config.resource_uri.is_some() {
+                file.write_all(
+                    format!("resource-pack=http://{public_server_host}/api/mc/resource-pack?id=\n")
+                        .as_bytes(),
+                )
+                .await?;
+            }
         }
         Ok(())
     }
@@ -188,4 +200,53 @@ pub async fn stop_server_config(
 ) -> Result<StopServerConfigResponse> {
     manager.stop_server_config().await?;
     Ok(StopServerConfigResponse {})
+}
+
+pub async fn get_current_server_config(
+    manager: &Manager,
+    _req: GetCurrentServerConfigRequest,
+) -> Result<GetCurrentServerConfigResponse> {
+    let running_config = manager.running_config().await;
+    let status_map = manager.status_map().await;
+    let current_status = status_map.keys().max().copied();
+    let status_info = status_map
+        .into_iter()
+        .map(|(status, info)| RunningServerStageInfo {
+            stage: RunningServerStage::from(status) as i32,
+            enter_time: info.start_time.timestamp(),
+            finish_time: info.end_time.map(|time| time.timestamp()),
+            in_error: info.error.is_some(),
+            error_message: info.error,
+        })
+        .collect();
+
+    Ok(GetCurrentServerConfigResponse {
+        running_config: running_config.map(ServerConfig::into),
+        status: current_status.map(|current_status| RunningServerStatus {
+            stage: RunningServerStage::from(current_status) as i32,
+            stage_info: status_info,
+        }),
+    })
+}
+
+impl From<ProcessStatus> for RunningServerStage {
+    fn from(value: ProcessStatus) -> Self {
+        match value {
+            ProcessStatus::Starting(StartingStatus::DownloadServerJar) => {
+                RunningServerStage::PullingServer
+            }
+            ProcessStatus::Starting(StartingStatus::DownloadWorld) => {
+                RunningServerStage::PullingWorld
+            }
+            ProcessStatus::Starting(StartingStatus::InitializeConfigFile) => {
+                RunningServerStage::InitializingFile
+            }
+            ProcessStatus::Starting(StartingStatus::WaitingForServerReady) => {
+                RunningServerStage::Starting
+            }
+            ProcessStatus::Running => RunningServerStage::Running,
+            ProcessStatus::Terminating => RunningServerStage::Stopping,
+            ProcessStatus::Terminated => RunningServerStage::Stopped,
+        }
+    }
 }

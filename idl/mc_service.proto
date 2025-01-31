@@ -80,10 +80,11 @@ enum RunningServerStage {
   INIT = 0;
   PULLING_SERVER = 1;
   PULLING_WORLD = 2;
-  STARTING = 3;
-  RUNNING = 4;
-  STOPPING = 5;
-  STOPPED = 6;
+  INITIALIZING_FILE = 3;
+  STARTING = 4;
+  RUNNING = 5;
+  STOPPING = 6;
+  STOPPED = 7;
 }
 
 message RunningServerStageInfo {
@@ -91,8 +92,7 @@ message RunningServerStageInfo {
   int64 enter_time = 2;
   optional int64 finish_time = 3;
   bool in_error = 4;
-  optional int64 error_time = 5;
-  optional string error_message = 6;
+  optional string error_message = 5;
 }
 
 message StopServerConfigRequest {}

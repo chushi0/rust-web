@@ -63,6 +63,6 @@ impl McService for Service {
         &self,
         req: Request<GetCurrentServerConfigRequest>,
     ) -> Result<Response<GetCurrentServerConfigResponse>, Status> {
-        todo!()
+        process::get_current_server_config(self, req.into_inner()).await
     }
 }

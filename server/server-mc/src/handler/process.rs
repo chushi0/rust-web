@@ -32,3 +32,15 @@ pub async fn stop_server_config(
         Err(err) => Err(Status::internal(err.to_string())),
     }
 }
+
+pub async fn get_current_server_config(
+    service: &Service,
+    req: GetCurrentServerConfigRequest,
+) -> Result<Response<GetCurrentServerConfigResponse>, Status> {
+    let result = service::process::get_current_server_config(&service.process_manager, req).await;
+
+    match result {
+        Ok(response) => Ok(Response::new(response)),
+        Err(err) => Err(Status::internal(err.to_string())),
+    }
+}
