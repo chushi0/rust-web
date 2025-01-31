@@ -4,6 +4,8 @@ use common::tonic_idl_gen::{
     CreateGithubActivityEvent, DisplayEvent, GithubActivityEvent, ListDisplayEventRequest,
     ListDisplayEventResponse, ListGithubActivityEventRequest, ListGithubActivityEventResponse,
 };
+use server_common::db::context::{Context, ContextRef};
+use sqlx::Database;
 
 use crate::dao::{
     display_event::{self, DisplayEventRepository, ListDisplayEventParameters},
@@ -12,10 +14,13 @@ use crate::dao::{
     },
 };
 
-pub async fn list_display_event<DB: DisplayEventRepository>(
-    db: &mut DB,
+pub async fn list_display_event<DB: Database>(
+    db: ContextRef<'_, '_, DB>,
     request: ListDisplayEventRequest,
-) -> Result<ListDisplayEventResponse> {
+) -> Result<ListDisplayEventResponse>
+where
+    for<'db> Context<'db, DB>: DisplayEventRepository,
+{
     let params = ListDisplayEventParameters {
         offset: request.offset,
         limit: request.count,
@@ -47,10 +52,13 @@ pub async fn list_display_event<DB: DisplayEventRepository>(
     })
 }
 
-pub async fn list_github_activity_event<DB: GithubActivityEventRepository>(
-    db: &mut DB,
+pub async fn list_github_activity_event<DB: Database>(
+    db: ContextRef<'_, '_, DB>,
     request: ListGithubActivityEventRequest,
-) -> Result<ListGithubActivityEventResponse> {
+) -> Result<ListGithubActivityEventResponse>
+where
+    for<'db> Context<'db, DB>: GithubActivityEventRepository,
+{
     let params = ListGithubActivityEventParameters {
         offset: request.offset,
         limit: request.count,
@@ -75,12 +83,13 @@ pub async fn list_github_activity_event<DB: GithubActivityEventRepository>(
     })
 }
 
-pub async fn create_github_activity_event<
-    DB: GithubActivityEventRepository + DisplayEventRepository,
->(
-    db: &mut DB,
+pub async fn create_github_activity_event<DB: Database>(
+    db: ContextRef<'_, '_, DB>,
     to_create_event: CreateGithubActivityEvent,
-) -> Result<()> {
+) -> Result<()>
+where
+    for<'db> Context<'db, DB>: GithubActivityEventRepository + DisplayEventRepository,
+{
     let event_time = DateTime::from_timestamp(to_create_event.event_time, 0)
         .ok_or(anyhow!("invalid event_time"))?;
 

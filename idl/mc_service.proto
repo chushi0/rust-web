@@ -1,0 +1,119 @@
+syntax = "proto3";
+package mc_service;
+
+message ListMcVersionRequest {
+  int64 offset = 1;
+  int64 count = 2;
+  optional bool has_snapshot = 3;
+}
+
+message ListMcVersionResponse {
+  int64 total = 1;
+  repeated McVersion versions = 2;
+}
+
+message McVersion {
+  string id = 1;
+  McVersionType type = 2;
+  int64 release_time = 3;
+}
+
+enum McVersionType {
+  RELEASE = 0;
+  SNAPSHOT = 1;
+}
+
+message SyncMcVersionRequest {}
+
+message SyncMcVersionResponse {}
+
+message CreateServerConfigRequest {
+  string name = 1;
+  string version = 2;
+  optional string world_uri = 3;
+  optional string resource_uri = 4;
+  string motd = 5;
+}
+
+message CreateServerConfigResponse {}
+
+message ListServerConfigRequest {
+  int64 offset = 1;
+  int64 count = 2;
+}
+
+message ListServerConfigResponse {
+  int64 total = 1;
+  repeated ServerConfig configs = 2;
+}
+
+message ServerConfig {
+  uint64 id = 1;
+  string name = 2;
+  string version = 3;
+  optional string world_uri = 4;
+  optional string resource_uri = 5;
+  string motd = 6;
+}
+
+message DeleteServerConfigRequest { uint64 id = 1; }
+
+message DeleteServerConfigResponse {}
+
+message StartServerConfigRequest { uint64 id = 1; }
+
+message StartServerConfigResponse {}
+
+message GetCurrentServerConfigRequest {}
+
+message GetCurrentServerConfigResponse {
+  optional ServerConfig running_config = 1;
+  optional RunningServerStatus status = 2;
+}
+
+message RunningServerStatus {
+  RunningServerStage stage = 1;
+  repeated RunningServerStageInfo stage_info = 2;
+}
+
+enum RunningServerStage {
+  INIT = 0;
+  PULLING_SERVER = 1;
+  PULLING_WORLD = 2;
+  STARTING = 3;
+  RUNNING = 4;
+  STOPPING = 5;
+  STOPPED = 6;
+}
+
+message RunningServerStageInfo {
+  RunningServerStage stage = 1;
+  int64 enter_time = 2;
+  optional int64 finish_time = 3;
+  bool in_error = 4;
+  optional int64 error_time = 5;
+  optional string error_message = 6;
+}
+
+message StopServerConfigRequest {}
+
+message StopServerConfigResponse {}
+
+service McService {
+  rpc ListMcVersion(ListMcVersionRequest) returns (ListMcVersionResponse);
+  rpc SyncMcVersion(SyncMcVersionRequest) returns (SyncMcVersionResponse);
+
+  rpc CreateServerConfig(CreateServerConfigRequest)
+      returns (CreateServerConfigResponse);
+  rpc ListServerConfig(ListServerConfigRequest)
+      returns (ListServerConfigResponse);
+  rpc DeleteServerConfig(DeleteServerConfigRequest)
+      returns (DeleteServerConfigResponse);
+
+  rpc StartServerConfig(StartServerConfigRequest)
+      returns (StartServerConfigResponse);
+  rpc GetCurrentServerConfig(GetCurrentServerConfigRequest)
+      returns (GetCurrentServerConfigResponse);
+  rpc StopServerConfig(StopServerConfigRequest)
+      returns (StopServerConfigResponse);
+}
