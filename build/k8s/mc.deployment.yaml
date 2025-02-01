@@ -1,0 +1,102 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mc-deployment
+  labels:
+    app: mc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mc
+  template:
+    metadata:
+      labels:
+        app: mc
+    spec:
+      containers:
+        - name: mc
+          image: chushi0/rustweb/server-mc:latest
+          imagePullPolicy: Never
+          env:
+            - name: RUST_BACKTRACE
+              value: "1"
+            - name: RUST_LIB_BACKTRACE
+              value: "1"
+            - name: RUSTWEB_DB_HOST
+              value: "mysql-service.default.svc.cluster.local"
+            - name: RUSTWEB_DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-password
+                  key: app-username
+            - name: RUSTWEB_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: mysql-password
+                  key: app-password
+            - name: RUSTWEB_DB_DATABASE
+              value: "rustweb"
+            - name: RUSTWEB_ALIYUN_OSS_BUCKET_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: oss-bucket-host
+            - name: RUSTWEB_ALIYUN_OSS_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: oss-bucket-name
+            - name: RUSTWEB_ALIYUN_OSS_BUCKET_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: oss-bucket-region
+            - name: RUSTWEB_ALIYUN_OSS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: access-key-id
+            - name: RUSTWEB_ALIYUN_OSS_ACCESS_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: access-key-secret
+          ports:
+            - containerPort: 13000
+            - containerPort: 25565
+          volumeMounts:
+            - name: mc-data
+              mountPath: /var/lib/mc_server
+      volumes:
+        - name: mc-data
+          persistentVolumeClaim:
+            claimName: mc-pvc
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-service-rpc
+spec:
+  selector:
+    app: mc
+  ports:
+    - protocol: TCP
+      port: 13000
+      targetPort: 13000
+  type: ClusterIP
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mc-service-mc
+spec:
+  selector:
+    app: mc
+  ports:
+    - protocol: TCP
+      port: 25565
+      targetPort: 25565
+  type: NodePort
