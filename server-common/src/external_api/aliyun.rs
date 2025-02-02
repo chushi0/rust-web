@@ -4,6 +4,7 @@ pub mod oss {
     use anyhow::{bail, Result};
     use bytes::Bytes;
     use chrono::{DateTime, Duration, Utc};
+    use const_format::concatcp;
     use futures::Stream;
     use itertools::Itertools;
     use reqwest::{
@@ -13,6 +14,9 @@ pub mod oss {
     use secrecy::{ExposeSecret, SecretString};
     use tracing::info;
     use uuid::Uuid;
+
+    pub const RUSTWEB_PREFIX: &str = "/rust-web/";
+    pub const UPLOAD_PREFIX: &str = concatcp!(RUSTWEB_PREFIX, "upload/");
 
     const ENV_BUCKET_HOST: &str = "RUSTWEB_ALIYUN_OSS_BUCKET_HOST";
     const ENV_BUCKET_NAME: &str = "RUSTWEB_ALIYUN_OSS_BUCKET_NAME";
@@ -262,7 +266,7 @@ pub mod oss {
                 let timestamp = Utc::now().timestamp();
                 let random = Uuid::new_v4().to_string();
 
-                format!("rust-web/upload/{}-{}", timestamp, random)
+                format!("{}{}-{}", UPLOAD_PREFIX, timestamp, random)
             };
 
             let sign = self.sign_header(

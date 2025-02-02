@@ -34,8 +34,8 @@ pub enum VersionType {
 }
 
 pub struct ListVersionParameters {
-    pub offset: i64,
-    pub limit: i64,
+    pub offset: u64,
+    pub limit: u64,
     pub has_snapshot: bool,
 }
 

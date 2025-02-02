@@ -3,9 +3,10 @@ use common::tonic_idl_gen::{
     CreateServerConfigRequest, CreateServerConfigResponse, DeleteServerConfigRequest,
     DeleteServerConfigResponse, ListServerConfigRequest, ListServerConfigResponse,
 };
+use const_format::concatcp;
 use server_common::{
     db::context::{Context, ContextRef},
-    external_api::aliyun::oss::HttpOssClient,
+    external_api::aliyun::oss::{HttpOssClient, RUSTWEB_PREFIX},
 };
 use sqlx::Database;
 
@@ -16,8 +17,8 @@ use crate::{
     process::manager::Manager,
 };
 
-const WORLD_URI_PREFIX: &str = "rust-web/mc/world/";
-const RESOURCE_URI_PREFIX: &str = "rust-web/mc/resource/";
+const WORLD_URI_PREFIX: &str = concatcp!(RUSTWEB_PREFIX, "mc/world/");
+const RESOURCE_URI_PREFIX: &str = concatcp!(RUSTWEB_PREFIX, "mc/resource/");
 
 pub async fn create_server_config<DB: Database>(
     db: ContextRef<'_, '_, DB>,

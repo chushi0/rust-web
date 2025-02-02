@@ -1,22 +1,19 @@
+use axum::Extension;
 use chrono::{Duration, Utc};
-use common::tonic_idl_gen::{
-    core_rpc_service_client::CoreRpcServiceClient, ListDisplayEventRequest,
-};
+use common::tonic_idl_gen::ListDisplayEventRequest;
+use server_common::rpc_client::CoreRpcServiceClient;
 use tonic::Request;
 
-use crate::model::{
-    home::{DisplayEvent, GetHomeEventResponse},
-    AppError, BodyResponse,
+use crate::{
+    extract::{error::AppError, response::BodyResponse},
+    model::home::{DisplayEvent, GetHomeEventResponse},
 };
 
 #[axum::debug_handler]
-pub async fn events() -> Result<BodyResponse<GetHomeEventResponse>, AppError> {
+pub async fn events(
+    Extension(mut core_rpc_client): Extension<CoreRpcServiceClient>,
+) -> Result<BodyResponse<GetHomeEventResponse>, AppError> {
     let min_event_time = Utc::now() - Duration::days(30);
-
-    let mut core_rpc_client =
-        CoreRpcServiceClient::connect("http://core-rpc-service.default.svc.cluster.local:13000")
-            .await
-            .map_err(anyhow::Error::new)?;
 
     let events = core_rpc_client
         .list_display_event(Request::new(ListDisplayEventRequest {

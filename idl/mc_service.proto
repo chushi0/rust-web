@@ -2,8 +2,8 @@ syntax = "proto3";
 package mc_service;
 
 message ListMcVersionRequest {
-  int64 offset = 1;
-  int64 count = 2;
+  uint64 offset = 1;
+  uint64 count = 2;
   optional bool has_snapshot = 3;
 }
 
@@ -38,8 +38,8 @@ message CreateServerConfigRequest {
 message CreateServerConfigResponse {}
 
 message ListServerConfigRequest {
-  int64 offset = 1;
-  int64 count = 2;
+  uint64 offset = 1;
+  uint64 count = 2;
 }
 
 message ListServerConfigResponse {

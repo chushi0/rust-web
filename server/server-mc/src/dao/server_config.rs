@@ -18,8 +18,8 @@ pub struct ServerConfig {
 }
 
 pub struct ListServerConfigParameters {
-    pub offset: i64,
-    pub limit: i64,
+    pub offset: u64,
+    pub limit: u64,
 }
 
 pub enum UpdateServerConfig<'v> {
