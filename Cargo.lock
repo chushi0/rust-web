@@ -4263,6 +4263,7 @@ dependencies = [
  "anyhow",
  "base32",
  "gloo-net 0.6.0",
+ "gloo-storage 0.3.0",
  "gloo-timers 0.3.0",
  "instant",
  "js-sys",

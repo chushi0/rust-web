@@ -36,6 +36,11 @@ pub fn NavBar(props: &NavBarProps) -> Html {
             title: "TOTP",
             href: crate::Route::Totp,
         },
+        Item::Item {
+            id: "config",
+            title: "设置",
+            href: crate::Route::LocalConfig,
+        },
     ];
 
     html! {

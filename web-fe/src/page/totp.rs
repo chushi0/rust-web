@@ -71,7 +71,7 @@ impl Component for TotpPage {
 
         html! {
             <>
-                <Title title="动态" />
+                <Title title="一次性密码 TOTP" />
                 <NavBar active="totp"/>
                 <div class="container-sm" style="padding-top: 1em; padding-bottom: 1em;">
 
