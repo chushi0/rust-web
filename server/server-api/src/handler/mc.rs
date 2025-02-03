@@ -1,6 +1,7 @@
-use axum::Extension;
+use axum::{extract::Query, http::StatusCode, response::Redirect, Extension};
+use chrono::Duration;
 use common::tonic_idl_gen::McVersionType;
-use server_common::rpc_client::McServiceClient;
+use server_common::{external_api::aliyun::oss::OssClient, rpc_client::McServiceClient};
 
 use crate::{
     extract::{
@@ -9,9 +10,10 @@ use crate::{
         response::BodyResponse,
     },
     model::mc::{
-        CreateServerConfigRequest, GetCurrentServerConfigResponse, ListMcVersionRequest,
-        ListMcVersionResponse, ListServerConfigRequest, ListServerConfigResponse, McVersion,
-        RunningServerStage, RunningServerStageInfo, ServerConfig, StartServerConfigRequest,
+        CreateServerConfigRequest, GetCurrentServerConfigResponse, GetResourcePackRequest,
+        ListMcVersionRequest, ListMcVersionResponse, ListServerConfigRequest,
+        ListServerConfigResponse, McVersion, RunningServerStage, RunningServerStageInfo,
+        ServerConfig, StartServerConfigRequest,
     },
 };
 
@@ -247,4 +249,32 @@ pub async fn get_current_server_config(
             })
             .unwrap_or_default(),
     }))
+}
+
+#[axum::debug_handler]
+pub async fn get_resource_pack(
+    Extension(mut mc_client): Extension<McServiceClient>,
+    Extension(oss_client): Extension<OssClient>,
+    Query(req): Query<GetResourcePackRequest>,
+) -> Result<Redirect, StatusCode> {
+    let current_server_config = mc_client
+        .get_current_server_config(common::tonic_idl_gen::GetCurrentServerConfigRequest {})
+        .await
+        .map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?
+        .into_inner();
+
+    let Some(running_config) = current_server_config.running_config else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+
+    if running_config.id != req.id {
+        return Err(StatusCode::NOT_FOUND);
+    }
+
+    let Some(resource_uri) = running_config.resource_uri else {
+        return Err(StatusCode::NOT_FOUND);
+    };
+
+    let download_url = oss_client.download_url(&resource_uri, Duration::hours(1));
+    Ok(Redirect::to(&download_url))
 }

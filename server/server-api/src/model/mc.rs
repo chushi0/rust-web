@@ -86,3 +86,8 @@ pub struct RunningServerStageInfo {
     pub in_error: bool,
     pub error_message: Option<String>,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct GetResourcePackRequest {
+    pub id: u64,
+}

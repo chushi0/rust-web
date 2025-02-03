@@ -141,7 +141,7 @@ impl crate::process::callback::ProcessService for ProcessService {
         }
         // server.properties
         {
-            let public_server_host = "localhost"; // TODO
+            let public_server_host = std::env::var("RUSTWEB_MC_HOST")?;
 
             let path = Path::new(root).join("server.properties");
             let mut file = File::create(path).await?;

@@ -42,6 +42,7 @@ async fn main() {
             "/api/mc/server_config/process/info",
             get(handler::mc::get_current_server_config),
         )
+        .route("/api/mc/resource-pack", get(handler::mc::get_resource_pack))
         .route("/api/oss/upload", get(handler::oss::get_upload_signature))
         .layer(Extension(core_rpc_service_client))
         .layer(Extension(mc_service_client))
