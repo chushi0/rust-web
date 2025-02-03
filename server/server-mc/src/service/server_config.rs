@@ -40,7 +40,7 @@ where
 
     let mut updates = Vec::new();
     if let Some(world_uri) = req.world_uri {
-        let permanent_world_uri = format!("{WORLD_URI_PREFIX}/world-{}.zip", server_config.id);
+        let permanent_world_uri = format!("{WORLD_URI_PREFIX}world-{}.zip", server_config.id);
         oss_client
             .copy_object(&world_uri, &permanent_world_uri)
             .await?;
@@ -51,8 +51,7 @@ where
     }
 
     if let Some(resource_uri) = req.resource_uri {
-        let permanent_resource_uri =
-            format!("{RESOURCE_URI_PREFIX}/world-{}.zip", server_config.id);
+        let permanent_resource_uri = format!("{RESOURCE_URI_PREFIX}world-{}.zip", server_config.id);
         oss_client
             .copy_object(&resource_uri, &permanent_resource_uri)
             .await?;

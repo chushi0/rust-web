@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
@@ -51,4 +53,36 @@ pub struct ServerConfig {
     pub name: String,
     pub version: String,
     pub motd: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StartServerConfigRequest {
+    pub id: u64,
+}
+
+#[derive(Debug, Serialize)]
+pub struct GetCurrentServerConfigResponse {
+    pub running_config: Option<ServerConfig>,
+    pub status: HashMap<RunningServerStage, RunningServerStageInfo>,
+}
+
+#[derive(Debug, Serialize, PartialEq, Eq, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum RunningServerStage {
+    Init,
+    PullingServer,
+    PullingWorld,
+    InitializingFile,
+    Starting,
+    Running,
+    Stopping,
+    Stopped,
+}
+
+#[derive(Debug, Serialize)]
+pub struct RunningServerStageInfo {
+    pub enter_time: i64,
+    pub finish_time: Option<i64>,
+    pub in_error: bool,
+    pub error_message: Option<String>,
 }

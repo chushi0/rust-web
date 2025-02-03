@@ -206,7 +206,7 @@ pub mod oss {
                     .join("");
                 let additional_header_string = additional_headers.into_iter().sorted().join("\n");
 
-                format!("{verb}\n/{bucket_name}/{uri}\n{query_string}\n{header_string}\n{additional_header_string}\nUNSIGNED-PAYLOAD")
+                format!("{verb}\n/{bucket_name}{uri}\n{query_string}\n{header_string}\n{additional_header_string}\nUNSIGNED-PAYLOAD")
             };
             info!("canonical_request: {}", canonical_request);
 
@@ -238,8 +238,8 @@ pub mod oss {
             signature.into_iter().map(|n| format!("{:02x}", n)).join("")
         }
 
-        fn path_url(&self, uri: &str) -> String {
-            format!("https://{}/{}", self.bucket_host, uri)
+        pub fn path_url(&self, uri: &str) -> String {
+            format!("https://{}{}", self.bucket_host, uri)
         }
 
         pub fn download_url(&self, path: &str, expires: Duration) -> String {
@@ -253,7 +253,7 @@ pub mod oss {
             );
 
             format!(
-                "https://{}/{}?{}",
+                "https://{}{}?{}",
                 self.bucket_host,
                 path,
                 sign_result.to_query_string()
@@ -319,7 +319,8 @@ pub mod oss {
         }
 
         pub async fn copy_object(&self, src: &str, dst: &str) -> Result<()> {
-            let header = [("x-oss-copy-source", src)];
+            let src = format!("/{}{}", self.oss_client.bucket_name, src);
+            let header = [("x-oss-copy-source", &src as &str)];
 
             let sign = self.oss_client.sign_header(
                 "PUT",
@@ -344,11 +345,16 @@ pub mod oss {
                         .map(|(k, v)| Ok((HeaderName::from_str(k)?, HeaderValue::from_str(v)?)))
                         .collect::<Result<_>>()?,
                 )
+                .header("Authorization", sign.signature)
                 .send()
                 .await?;
 
             if !response.status().is_success() {
-                bail!("copy object failed: {}", response.status())
+                bail!(
+                    "copy object failed: {}, {}",
+                    response.status(),
+                    response.text().await?
+                )
             }
             Ok(())
         }
@@ -372,6 +378,7 @@ pub mod oss {
                         .map(|(k, v)| Ok((HeaderName::from_str(k)?, HeaderValue::from_str(v)?)))
                         .collect::<Result<_>>()?,
                 )
+                .header("Authorization", sign.signature)
                 .send()
                 .await?;
 

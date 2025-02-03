@@ -140,19 +140,25 @@ impl ServerConfigRepository for Context<'_, MySql> {
             for update in updates {
                 match update {
                     UpdateServerConfig::Name(name) => {
-                        query_update.push("name = ").push_bind(name);
+                        query_update.push(" name = ").push_bind_unseparated(name);
                     }
                     UpdateServerConfig::McVersion(mc_version) => {
-                        query_update.push("mc_version = ").push_bind(mc_version);
+                        query_update
+                            .push(" mc_version = ")
+                            .push_bind_unseparated(mc_version);
                     }
                     UpdateServerConfig::WorldUri(world_uri) => {
-                        query_update.push("world_uri = ").push_bind(world_uri);
+                        query_update
+                            .push(" world_uri = ")
+                            .push_bind_unseparated(world_uri);
                     }
                     UpdateServerConfig::ResourceUri(resource_uri) => {
-                        query_update.push("resource_uri = ").push_bind(resource_uri);
+                        query_update
+                            .push(" resource_uri = ")
+                            .push_bind_unseparated(resource_uri);
                     }
                     UpdateServerConfig::Motd(motd) => {
-                        query_update.push("motd = ").push_bind(motd);
+                        query_update.push(" motd = ").push_bind_unseparated(motd);
                     }
                 }
             }

@@ -4260,15 +4260,22 @@ dependencies = [
 name = "web-fe"
 version = "0.1.0"
 dependencies = [
+ "aes-gcm",
  "anyhow",
  "base32",
+ "base64 0.22.1",
+ "gloo-file 0.3.0",
  "gloo-net 0.6.0",
  "gloo-storage 0.3.0",
  "gloo-timers 0.3.0",
+ "hkdf",
  "instant",
  "js-sys",
  "log",
+ "rmp-serde",
  "serde",
+ "serde_json",
+ "sha2",
  "time",
  "totp-lite",
  "wasm-bindgen",

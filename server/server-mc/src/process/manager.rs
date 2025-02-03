@@ -1,6 +1,6 @@
 use std::{
     collections::HashMap,
-    fmt::Display,
+    fmt::{Debug, Display},
     path::Path,
     sync::{Arc, OnceLock},
 };
@@ -108,8 +108,8 @@ impl ManagerInner {
         );
     }
 
-    async fn status_error(&self, error: impl Display) {
-        warn!("status error: {}", error);
+    async fn status_error(&self, error: impl Debug + Display) {
+        warn!("status error: {:?}", error);
         self.status.write().await.iter_mut().for_each(|(_, value)| {
             if value.end_time.is_none() {
                 value.end_time = Some(Utc::now());

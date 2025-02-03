@@ -97,7 +97,7 @@ impl crate::process::callback::ProcessService for ProcessService {
                     .enclosed_name()
                     .ok_or(anyhow!("invalid filename encode"))?;
 
-                let normalized_name = target_path.join(decoded_name).canonicalize()?;
+                let normalized_name = target_path.join(decoded_name);
                 if !normalized_name.starts_with(target_path) {
                     bail!("path crossing");
                 }

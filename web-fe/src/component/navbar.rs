@@ -36,6 +36,14 @@ pub fn NavBar(props: &NavBarProps) -> Html {
             title: "TOTP",
             href: crate::Route::Totp,
         },
+        Item::Menu {
+            title: "管理",
+            children: Rc::new(vec![Item::Item {
+                id: "manage-mc-server",
+                title: "MC服务器",
+                href: crate::Route::ManageMcServer,
+            }]),
+        },
         Item::Item {
             id: "config",
             title: "设置",

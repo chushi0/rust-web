@@ -2,6 +2,7 @@ pub(crate) mod component;
 pub(crate) mod config;
 pub(crate) mod model;
 pub(crate) mod page;
+pub(crate) mod sys;
 
 use crate::page::*;
 use web_sys::window;
@@ -18,6 +19,8 @@ enum Route {
     DevTools,
     #[at("/totp")]
     Totp,
+    #[at("/manage/mc-server")]
+    ManageMcServer,
     #[at("/config")]
     LocalConfig,
     #[not_found]
@@ -32,6 +35,7 @@ fn switch(routes: Route) -> Html {
         Route::GameNumberTower => html! { <GameNumberTowerPage/> },
         Route::DevTools => html! { <DevToolsPage /> },
         Route::Totp => html! { <TotpPage /> },
+        Route::ManageMcServer => html! { <McServerManagePage /> },
         Route::LocalConfig => html! { <LocalConfigPage /> },
     }
 }

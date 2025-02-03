@@ -1,7 +1,7 @@
 use web_sys::HtmlInputElement;
 use yew::prelude::*;
 
-use crate::{component::*, config::secret::SecretConfig};
+use crate::{component::*, config::secret::SecretConfig, sys::bootstrap::modal::Modal};
 
 #[derive(Debug, Default, Clone)]
 struct AppConfig {
@@ -11,6 +11,8 @@ struct AppConfig {
 #[function_component]
 pub fn LocalConfigPage() -> Html {
     let config = use_state(AppConfig::default);
+
+    let save_dialog = use_node_ref();
 
     {
         let config = config.clone();
@@ -33,14 +35,12 @@ pub fn LocalConfigPage() -> Html {
 
     let on_submit = {
         let config = config.clone();
+        let save_dialog = save_dialog.clone();
         Callback::from(move |e: SubmitEvent| {
             e.prevent_default();
             config.secret.save_to_localstorage();
-            _ = js_sys::eval(
-                r#"
-                    new bootstrap.Modal(document.getElementById("save-config-modal")).show()
-                "#,
-            );
+            let dialog = save_dialog.cast().expect("dialog should exist");
+            Modal::new_with_element(&dialog).show();
         })
     };
 
@@ -69,7 +69,7 @@ pub fn LocalConfigPage() -> Html {
                     </button>
                 </form>
 
-                <div class="modal fade" tabindex="-1" id="save-config-modal">
+                <div class="modal fade" tabindex="-1" ref={save_dialog}>
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header">

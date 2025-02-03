@@ -1,4 +1,4 @@
-use crate::component::*;
+use crate::{component::*, sys::bootstrap::modal::Modal};
 use js_sys::Math::random;
 use std::{cell::RefCell, rc::Rc};
 use wasm_bindgen::prelude::*;
@@ -8,6 +8,7 @@ use yew::prelude::*;
 pub struct GameNumberTowerPage {
     data: Rc<RefCell<GameData>>,
     gameover: bool,
+    gameover_dialog: NodeRef,
 }
 
 pub enum GameNumberTowerPageMsg {
@@ -57,6 +58,7 @@ impl Component for GameNumberTowerPage {
         Self {
             data: Rc::new(RefCell::new(data)),
             gameover: false,
+            gameover_dialog: NodeRef::default(),
         }
     }
 
@@ -170,6 +172,7 @@ impl Component for GameNumberTowerPage {
         let onmouseup = {
             let data = self.data.clone();
             let link = link.clone();
+            let gameover_dialog = self.gameover_dialog.clone();
 
             Callback::from(move |event: CanvasMouseEvent| {
                 let mut data = data.borrow_mut();
@@ -181,6 +184,10 @@ impl Component for GameNumberTowerPage {
                 if data.player_atk <= 0 {
                     log::info!("You die");
                     link.send_message(GameNumberTowerPageMsg::Die);
+                    let dialog = gameover_dialog
+                        .cast()
+                        .expect("Gameover dialog should be exists");
+                    Modal::new_with_element(&dialog).show();
                     return;
                 }
                 data.towers[0][layer] = TowerLayerInfo::Clear;
@@ -204,8 +211,9 @@ impl Component for GameNumberTowerPage {
             })
         };
 
-        let close_dialog =
-            Callback::from(move |_| link.send_message(GameNumberTowerPageMsg::Restart));
+        let close_dialog = Callback::from(move |_| {
+            link.send_message(GameNumberTowerPageMsg::Restart);
+        });
 
         html! {
             <>
@@ -283,24 +291,22 @@ impl Component for GameNumberTowerPage {
                     </ol>
                     </div>
 
-                    if self.gameover {
-                        <div class="modal" style="display: block;" tabindex="-1">
-                            <div class="modal-dialog modal-dialog-scrollable">
-                                <div class="modal-content">
-                                    <div class="modal-header">
-                                        <h5 class="modal-title">{"游戏结束"}</h5>
-                                        <button type="button" class="btn-close" aria-label="Close" onclick={close_dialog.clone()}></button>
-                                    </div>
-                                    <div class="modal-body">
-                                        <p>{format!("您探索了 {} 座塔", self.data.borrow().player_tower_count)}</p>
-                                    </div>
-                                    <div class="modal-footer">
-                                        <button type="button" class="btn btn-primary" onclick={close_dialog.clone()}>{"重新开始"}</button>
-                                    </div>
+                    <div class="modal fade" tabindex="-1" data-bs-backdrop="static" ref={self.gameover_dialog.clone()}>
+                        <div class="modal-dialog modal-dialog-scrollable">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">{"游戏结束"}</h5>
+                                    <button type="button" class="btn-close" aria-label="Close" data-bs-dismiss="modal" onclick={close_dialog.clone()}></button>
+                                </div>
+                                <div class="modal-body">
+                                    <p>{format!("您探索了 {} 座塔", self.data.borrow().player_tower_count)}</p>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-primary" data-bs-dismiss="modal" onclick={close_dialog.clone()}>{"重新开始"}</button>
                                 </div>
                             </div>
                         </div>
-                    }
+                    </div>
                 </div>
             </>
         }

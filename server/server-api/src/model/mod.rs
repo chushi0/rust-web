@@ -1,5 +1,6 @@
 pub mod home;
 pub mod mc;
+pub mod oss;
 
 const fn default_offset() -> u64 {
     0
