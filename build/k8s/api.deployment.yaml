@@ -16,13 +16,43 @@ spec:
     spec:
       containers:
         - name: api
-          image: chushi0/rustweb/server-api:latest
+          image: chushi0/rustweb/server-api:v20250206
           imagePullPolicy: Never
           env:
             - name: RUST_BACKTRACE
               value: "1"
             - name: RUST_LIB_BACKTRACE
               value: "1"
+            - name: RUSTWEB_ALIYUN_OSS_BUCKET_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: oss-bucket-host
+            - name: RUSTWEB_ALIYUN_OSS_BUCKET_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: oss-bucket-name
+            - name: RUSTWEB_ALIYUN_OSS_BUCKET_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: oss-bucket-region
+            - name: RUSTWEB_ALIYUN_OSS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: access-key-id
+            - name: RUSTWEB_ALIYUN_OSS_ACCESS_KEY_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-config
+                  key: access-key-secret
+            - name: RUSTWEB_API_AUTH_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: server-config
+                  key: secret-auth-key
           ports:
             - containerPort: 8080
 

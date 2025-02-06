@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: mc
-          image: chushi0/rustweb/server-mc:latest
+          image: chushi0/rustweb/server-mc:v20250206
           imagePullPolicy: Never
           env:
             - name: RUST_BACKTRACE
@@ -62,6 +62,11 @@ spec:
                 secretKeyRef:
                   name: aliyun-config
                   key: access-key-secret
+            - name: RUSTWEB_MC_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: server-config
+                  key: mc-host
           ports:
             - containerPort: 13000
             - containerPort: 25565
