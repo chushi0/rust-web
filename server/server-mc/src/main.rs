@@ -51,7 +51,6 @@ impl Service {
         let http_client = Client::builder()
             .connect_timeout(Duration::from_secs(5))
             .read_timeout(Duration::from_secs(5))
-            .timeout(Duration::from_secs(30))
             .build()?;
         let process_service =
             ProcessService::new(db.clone(), oss_client.clone(), http_client.clone());
