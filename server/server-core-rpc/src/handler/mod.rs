@@ -4,7 +4,8 @@ use tonic::{Request, Response, Status};
 
 use crate::Service;
 
-pub mod event;
+mod event;
+mod user;
 
 #[tonic::async_trait]
 impl CoreRpcService for Service {
@@ -19,13 +20,27 @@ impl CoreRpcService for Service {
         &self,
         request: Request<ListGithubActivityEventRequest>,
     ) -> Result<Response<ListGithubActivityEventResponse>, Status> {
-        event::list_github_activity_event(&self, request).await
+        event::list_github_activity_event(self, request).await
     }
 
     async fn create_github_activity_event(
         &self,
         request: Request<CreateGithubActivityEventRequest>,
     ) -> Result<Response<CreateGithubActivityEventResponse>, Status> {
-        event::create_github_activity_event(&self, request).await
+        event::create_github_activity_event(self, request).await
+    }
+
+    async fn create_user(
+        &self,
+        request: Request<CreateUserRequest>,
+    ) -> Result<Response<CreateUserResponse>, Status> {
+        user::create_user(self, request).await
+    }
+
+    async fn check_user_login(
+        &self,
+        request: Request<CheckUserLoginRequest>,
+    ) -> Result<Response<CheckUserLoginResponse>, Status> {
+        user::check_user_login(self, request).await
     }
 }

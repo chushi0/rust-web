@@ -10,6 +10,7 @@ use server_common::{
 pub mod extract;
 pub mod handler;
 pub mod model;
+pub mod service;
 
 #[tokio::main]
 async fn main() {
@@ -18,6 +19,7 @@ async fn main() {
     let core_rpc_service_client = init_core_rpc_service_client();
     let mc_service_client = init_mc_service_client();
     let oss_client = OssClient::from_env().expect("failed to initialize oss_client");
+    let token_key = service::token::init_token_key();
 
     let app = Router::new()
         .route("/api/home/events", get(handler::home::events))
@@ -44,9 +46,12 @@ async fn main() {
         )
         .route("/api/mc/resource-pack", get(handler::mc::get_resource_pack))
         .route("/api/oss/upload", get(handler::oss::get_upload_signature))
+        .route("/api/user/login", post(handler::user::login))
+        .route("/api/user/register", post(handler::user::register))
         .layer(Extension(core_rpc_service_client))
         .layer(Extension(mc_service_client))
-        .layer(Extension(oss_client));
+        .layer(Extension(oss_client))
+        .layer(Extension(token_key));
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 

@@ -60,6 +60,37 @@ message ListDisplayEventResponse {
   repeated DisplayEvent events = 2;
 }
 
+message CreateUserRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message CreateUserResponse {
+  CreateUserBizError error = 1;
+  uint64 id = 2;
+}
+
+enum CreateUserBizError {
+  CreateUserSuccess = 0;
+  DuplicateUsername = 1;
+}
+
+message CheckUserLoginRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message CheckUserLoginResponse {
+  CheckUserLoginBizError error = 1;
+  uint64 id = 2;
+}
+
+enum CheckUserLoginBizError {
+  LoginSuccess = 0;
+  WrongUsername = 1;
+  WrongPassword = 2;
+}
+
 service CoreRpcService {
   rpc CreateGithubActivityEvent(CreateGithubActivityEventRequest)
       returns (CreateGithubActivityEventResponse);
@@ -69,4 +100,8 @@ service CoreRpcService {
 
   rpc ListDisplayEvent(ListDisplayEventRequest)
       returns (ListDisplayEventResponse);
+
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+
+  rpc CheckUserLogin(CheckUserLoginRequest) returns (CheckUserLoginResponse);
 }
