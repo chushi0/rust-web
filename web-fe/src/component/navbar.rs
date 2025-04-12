@@ -20,11 +20,18 @@ pub fn NavBar(props: &NavBarProps) -> Html {
         },
         Item::Menu {
             title: "游戏",
-            children: Rc::new(vec![Item::Item {
-                id: "game-number-tower",
-                title: "数字爬塔游戏",
-                href: crate::Route::GameNumberTower,
-            }]),
+            children: Rc::new(vec![
+                Item::Item {
+                    id: "game-number-tower",
+                    title: "数字爬塔游戏",
+                    href: crate::Route::GameNumberTower,
+                },
+                Item::Item {
+                    id: "wuwa-gacha",
+                    title: "鸣潮抽卡模拟",
+                    href: crate::Route::WuwaGacha,
+                },
+            ]),
         },
         Item::Item {
             id: "dev-tools",

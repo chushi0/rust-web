@@ -4,7 +4,8 @@ members = [
   "server-common",
   "server/server-api",
   "server/server-core-rpc",
-  "server/server-cronjob", "server/server-mc",
+  "server/server-cronjob",
+  "server/server-mc",
   "web-fe",
 ]
 resolver = "2"

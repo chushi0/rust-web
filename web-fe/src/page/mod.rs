@@ -5,6 +5,7 @@ mod local_config;
 mod mc_server;
 mod not_found;
 mod totp;
+mod wuwa_gacha;
 
 pub use dev_tools::*;
 pub use game_number_tower::*;
@@ -13,3 +14,4 @@ pub use local_config::*;
 pub use mc_server::*;
 pub use not_found::*;
 pub use totp::*;
+pub use wuwa_gacha::*;
