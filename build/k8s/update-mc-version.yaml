@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cronjob-update-mc-version
+spec:
+  schedule: "*/30 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: cronjob-update-mc-version-container
+            image: chushi0/rustweb/server-cronjob
+            imagePullPolicy: Never
+            env:
+              - name: RUST_BACKTRACE
+                value: "1"
+              - name: RUST_LIB_BACKTRACE
+                value: "1"
+            workingDir: /usr/local/home
+            command: ["/usr/local/home/server-cronjob"]
+            args: ["update-mc-version"] 
+          restartPolicy: Never
