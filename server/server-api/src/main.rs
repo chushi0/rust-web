@@ -6,11 +6,15 @@ use server_common::{
     external_api::aliyun::oss::OssClient,
     rpc_client::{init_core_rpc_service_client, init_mc_service_client},
 };
+use tower_http::services::{ServeDir, ServeFile};
 
-pub mod extract;
-pub mod handler;
-pub mod model;
-pub mod service;
+use crate::middleware::WebCache;
+
+pub(crate) mod extract;
+pub(crate) mod handler;
+pub(crate) mod middleware;
+pub(crate) mod model;
+pub(crate) mod service;
 
 #[tokio::main]
 async fn main() {
@@ -51,7 +55,14 @@ async fn main() {
         .layer(Extension(core_rpc_service_client))
         .layer(Extension(mc_service_client))
         .layer(Extension(oss_client))
-        .layer(Extension(token_key));
+        .layer(Extension(token_key))
+        .fallback_service(
+            Router::new()
+                .fallback_service(
+                    ServeDir::new("./web").fallback(ServeFile::new("./web/index.html")),
+                )
+                .layer(WebCache),
+        );
     let listener = tokio::net::TcpListener::bind("0.0.0.0:8080").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 

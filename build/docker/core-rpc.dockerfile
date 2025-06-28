@@ -1,4 +1,4 @@
-FROM rust:latest as build
+FROM rust:1.88 as build
 
 # prepare compile environment
 ## install protoc

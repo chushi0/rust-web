@@ -10,6 +10,7 @@ axum = {version = "0.8.1", features = ["macros"]}
 base64 = "0.22.1"
 chrono = {version = "0.4.39", features = ["serde"]}
 common = {path = "../../common"}
+futures = "0.3.31"
 hkdf = "0.12.4"
 hmac = "0.12.1"
 jwt = "0.16.0"
@@ -21,5 +22,8 @@ server-common = {path = "../../server-common"}
 sha2 = "0.10.8"
 tokio = {version = "1.43.0", features = ["full"]}
 tonic = "0.12.3"
+tower-http = {version = "0.6.6", features = ["fs"]}
+tower-layer = "0.3.3"
+tower-service = "0.3.3"
 tracing = "0.1.41"
 tracing-subscriber = "0.3.19"

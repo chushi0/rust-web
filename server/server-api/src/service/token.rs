@@ -38,6 +38,7 @@ pub fn sign_token(user_token: &UserToken, key: &TokenKey) -> Result<String> {
 }
 
 #[inline]
+#[allow(unused)] // TODO: unused now
 pub fn verify_token(token: &str, key: &TokenKey) -> Result<UserToken> {
     token.verify_with_key(&*key.0).map_err(anyhow::Error::from)
 }
