@@ -77,6 +77,10 @@ spec:
         - name: mc-data
           persistentVolumeClaim:
             claimName: mc-pvc
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
 
 ---
 apiVersion: v1

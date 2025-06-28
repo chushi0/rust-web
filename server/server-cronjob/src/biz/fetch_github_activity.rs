@@ -2,15 +2,14 @@ use crate::api::github::activity::{list_user_public_events, EventPayload};
 use anyhow::{anyhow, Result};
 use chrono::DateTime;
 use common::tonic_idl_gen::{
-    core_rpc_service_client::CoreRpcServiceClient, CreateDisplayEvent, CreateGithubActivityEvent,
-    CreateGithubActivityEventRequest, ListGithubActivityEventRequest,
+    CreateDisplayEvent, CreateGithubActivityEvent, CreateGithubActivityEventRequest,
+    ListGithubActivityEventRequest,
 };
+use server_common::rpc_client::init_core_rpc_service_client;
 use tonic::Request;
 
 pub async fn handle() -> Result<()> {
-    let mut core_rpc_client =
-        CoreRpcServiceClient::connect("http://core-rpc-service.default.svc.cluster.local:13000")
-            .await?;
+    let mut core_rpc_client = init_core_rpc_service_client();
 
     // 上次加载的位置
     let last_github_activity = core_rpc_client

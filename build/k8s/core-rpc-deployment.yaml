@@ -39,6 +39,10 @@ spec:
               value: "rustweb"
           ports:
             - containerPort: 13000
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
 
 ---
 apiVersion: v1

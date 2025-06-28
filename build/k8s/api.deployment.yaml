@@ -55,6 +55,10 @@ spec:
                   key: secret-auth-key
           ports:
             - containerPort: 8080
+      dnsConfig:
+        options:
+          - name: ndots
+            value: "1"
 
 ---
 apiVersion: v1

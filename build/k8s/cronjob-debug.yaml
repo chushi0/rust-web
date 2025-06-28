@@ -1,15 +1,16 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: cronjob-update-mc-version
+  name: cronjob-debug
 spec:
-  schedule: "0 */6 * * *"
+  schedule: "* * * * *"
+  suspend: true
   jobTemplate:
     spec:
       template:
         spec:
           containers:
-          - name: cronjob-update-mc-version-container
+          - name: cronjob-debug-container
             image: chushi0/rustweb/server-cronjob
             imagePullPolicy: Never
             env:
@@ -18,8 +19,8 @@ spec:
               - name: RUST_LIB_BACKTRACE
                 value: "1"
             workingDir: /usr/local/home
-            command: ["/usr/local/home/server-cronjob"]
-            args: ["update-mc-version"] 
+            command: ["/bin/sh", "-c"]
+            args: ["sleep 1800"]   # 30分钟
           restartPolicy: Never
           dnsPolicy: ClusterFirst
           dnsConfig:

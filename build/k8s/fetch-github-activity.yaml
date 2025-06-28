@@ -21,3 +21,7 @@ spec:
             command: ["/usr/local/home/server-cronjob"]
             args: ["fetch-github-activity"] 
           restartPolicy: Never
+          dnsConfig:
+            options:
+              - name: ndots
+                value: "1"
