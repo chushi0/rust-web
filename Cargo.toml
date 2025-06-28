@@ -6,6 +6,7 @@ members = [
   "server/server-core-rpc",
   "server/server-cronjob",
   "server/server-mc",
+  "server/server-gateway",
   "web/web-www",
 ]
 resolver = "2"
